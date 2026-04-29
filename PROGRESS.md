@@ -4,12 +4,31 @@
 
 ---
 
-## 🆕 2026-04-29 세션 기록 (#4 — Vercel 배포 사이클 + Next.js CVE 패치)
+## 🆕 2026-04-29 세션 기록 (#4 — Vercel 배포 사이클 + Next.js CVE 패치) ✅ 완료
+
+### 🎉 결과
+- **라이브 사이트**: https://pg-system-demo.vercel.app/
+- **로그인 페이지**: https://pg-system-demo.vercel.app/login
+- **결제 데모**: https://pg-system-demo.vercel.app/checkout
+- **GitHub**: https://github.com/jaydenjoo/pg-system-demo
+- **E2E 검증**: Playwright 8개 시나리오 통과
+
+### E2E 테스트 결과 (Playwright, 2026-04-29 17:53)
+| 시나리오 | 결과 |
+|---|---|
+| /login 폼 표시 | ✅ |
+| 로그인 폼 입력/제출 | ✅ (UI 작동) |
+| 로그인 API 호출 | ✅ POST /api/v1/auth/login (404 — API 서버 부재, 의도됨) |
+| 에러 메시지 표시 | ✅ "서버 연결에 실패했습니다" |
+| /dashboard 인증 미들웨어 | ✅ → /login redirect |
+| / (root) 인증 미들웨어 | ✅ → /login redirect |
+| /checkout public 페이지 | ✅ 결제 테스트 폼 완벽 (Mock 카드) |
+| 콘솔 에러 | ✅ favicon + API 404만 (의도됨) |
 
 ### 현재 위치
 - Epic: 인프라 정합성 / 외부 감사 준비
 - Task: pg-system-demo Vercel 라이브 배포 (홍보 + 테스트)
-- 상태: Next.js 15.5.15 (CVE 패치) 적용 후 Vercel 자동 빌드 → Ready 대기 중
+- 상태: ✅ **완료** (라이브 사이트 정상 운영)
 
 ### 이번 세션 완료 내역 (Claude — 9 commit 디버깅 사이클)
 | commit | 내용 | 결과 |
