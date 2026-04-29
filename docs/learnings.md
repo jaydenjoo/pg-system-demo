@@ -1,7 +1,57 @@
 # learnings.md — PG System
 > **오류 패턴과 결정 기록 = 바이브코딩의 복리 이자**
 > AI가 매 세션 자동 참조 → 같은 실수 반복 방지
-> 최종 업데이트: 2026-04-29 (#5 — UTF-8 btoa 함정 + Mock API 패턴)
+> 최종 업데이트: 2026-04-29 (#6 — Next.js rewrite + Vercel dynamic route + mock 타입 정합)
+
+---
+
+## 🔴 [2026-04-29] [Next.js/Vercel] next.config.ts의 `/api/*` rewrite가 dynamic API Routes를 가린다
+
+- **상황**: Vercel 배포에서 `/api/v1/merchants` (정적)는 200, `/api/v1/merchants/mch-001` ([id] 동적)은 404. 로컬 빌드는 두 경로 모두 routes-manifest.json에 정상 등록되어 있음. 디버깅에 1시간+ 소요.
+- **시도한 것들 (실패)**:
+  1. `force-dynamic` 추가 → 효과 없음
+  2. 새 dynamic 라우트 `/api/v1/test/[hello]` 만들어 봄 → 똑같이 404
+  3. `/api/v1/ping` (정적)은 200 → dynamic 자체가 안 매핑됨을 확인
+- **원인**: `next.config.ts` 의 `rewrites()` 가 `/api/:path*` 를 무조건 `${INTERNAL_API_URL}/api/:path*` 로 프록시. Vercel에는 백엔드가 없는데 rewrite가 걸려서 dynamic 경로 매칭이 깨짐. 정적 경로는 우연히 다른 경로로 풀려서 동작.
+- **해결**: rewrite를 `INTERNAL_API_URL` 환경변수 설정 시에만 활성화하도록 변경. 미설정이면 빈 배열 반환 → app/api 라우트가 직접 응답.
+- **규칙**:
+  1. Next.js의 `rewrites()` 는 dynamic API Routes와 충돌 가능. 환경별 분기 필수
+  2. dynamic 라우트가 404일 때 디버깅 순서: `routes-manifest.json` → `next.config.ts` rewrites/redirects → middleware matcher → vercel.json `rewrites`
+  3. 동일한 path 매칭이 정적/동적 경로에서 다르게 동작하면 라우팅 우선순위(파일시스템 → rewrites → 외부 destination) 의심
+  4. 로컬 build OK + Vercel 404는 보통 rewrite/middleware/.vercelignore 문제. 코드 자체는 멀쩡
+
+---
+
+## 🟡 [2026-04-29] [Mock 데이터] 타입 정의를 보고 mock을 만들지 말고, 실제 컴포넌트가 쓰는 필드를 보고 만들어라
+
+- **상황**: PgMargin/Merchant/User mock을 `types/*.ts`만 보고 만들었음. 처음엔 camelCase로 작성 → snake_case로 바꿈. 그래도 화면 빈칸. 결국 컴포넌트가 `m.min_fee.toLocaleString()` 호출하는 순간 런타임 에러. 잘못된 필드(`card_rate/bank_rate/vat_rate`)로 만들어 둔 것.
+- **원인**:
+  1. 한국 백엔드 컨벤션 (Prisma snake_case) ≠ 프론트 형식. 둘 다 일치해야 함
+  2. 타입 정의는 "이 필드가 있을 수 있다"만 알려주지, "어느 필드를 화면이 실제로 쓰는지"는 모름
+  3. nested join (`agents`, `merchants`, `companies`) 누락하면 페이지 일부만 렌더되고 다른 부분 빈 칸
+- **해결 절차**:
+  1. `types/*.ts` 로 필드 타입 파악
+  2. `components/<domain>/*.tsx` 와 `app/<domain>/page.tsx` 에서 실제 접근하는 필드 grep
+  3. mock 작성 → 빌드 → 라이브 검증 (브라우저 또는 Playwright)
+  4. 화면이 비어있으면 "fetch 실패"가 아닌 "필드 누락" 의심
+- **규칙**:
+  1. **mock은 타입 정의 + 실제 사용처 두 군데 모두 보고 작성**
+  2. nested join 객체 누락하지 말 것 (예: `merchant.agents.agent_name` 접근하면 mock에도 `agents: { agent_name }` 채워야 함)
+  3. 사용자 권한 모델 있는 시스템: `permissions: string[]` 같은 권한 배열 누락 시 사이드바 등 권한 기반 UI가 빈 칸. 시드 데이터의 `ROLE_PERMISSION_MAP` 그대로 사용
+  4. `types/*.ts` 의 `?` (optional) 필드도 mock에서 채워줘야 화면 깨짐 방지
+  5. 화면 디버깅 시 **API 응답 → 타입 매핑 → 컴포넌트 접근 필드** 3단계 모두 확인
+
+---
+
+## 🟡 [2026-04-29] [E2E] `test.describe.configure({ mode: "serial" })` 는 한 시나리오 실패 시 나머지 전부 skip
+
+- **상황**: 40개 시나리오 작성 → 1개 실패 → "35 did not run". 나머지 회귀 검증 못 함.
+- **원인**: serial 모드는 각 시나리오가 의존성 있다고 간주. 하나 실패하면 후속 모두 abort.
+- **해결**: serial 제거 → 각 시나리오 독립 실행. 각 시나리오는 자체적으로 `await login(page, role)` 호출하므로 의존성 없음.
+- **규칙**:
+  1. **serial 모드는 진짜로 한 시나리오가 다른 시나리오 결과에 의존할 때만** (예: 회원가입 → 로그인 → 프로필 수정 같은 명시적 워크플로우)
+  2. 각 시나리오에서 로그인을 헬퍼 함수로 매번 호출하면 serial 불필요
+  3. 회귀 테스트는 격리(isolated) 시나리오로 작성 → 1개 실패해도 나머지 전부 실행 → 동시에 여러 버그 노출
 
 ---
 

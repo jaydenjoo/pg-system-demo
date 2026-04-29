@@ -1,10 +1,73 @@
 # PG System 역설계 & 재구축 프로젝트 - PROGRESS
 > **이 파일을 새 세션 시작 시 참조하면 100% 이어서 작업 가능**
-> 최종 업데이트: 2026.04.29 (#5 — Mock API Routes로 라이브 데모 로그인 작동)
+> 최종 업데이트: 2026.04.29 (#6 — 라이브 데모 정합성 강화 + 심도 E2E + 업계 표준 갭 분석)
 
 ---
 
-## 🆕 2026-04-29 세션 기록 (#5 — Mock API Routes 구현 → 라이브 데모 로그인 작동) ✅ 완료
+## 🆕 2026-04-29 세션 기록 (#6 — 라이브 데모 정합성 강화 + 업계 표준 갭 분석) ✅ 완료
+
+### 현재 위치
+- Epic: 인프라 정합성 / 외부 감사 준비
+- Task: 라이브 데모 사이트 (https://pg-system-demo.vercel.app) 완전 동작 + 업계 표준 비교
+- 상태: ✅ 완료 (다음 Task 후보 대기)
+
+### 🎉 이번 세션 완료 내역
+1. **mock 데이터 snake_case 전면 정합** — User/Merchant/Agent/Transaction/Settlement/Deposit 타입과 100% 일치 (nested join 포함)
+2. **사용자 권한 매핑** — admin (SUPER_ADMIN 31권한), agent_test (AGENT_OWNER 7권한), merchant_test (MERCHANT_OWNER 6권한)
+3. **대시보드 기본 기간 30일 → 오늘** (3개 페이지: 관리자/대리점/가맹점)
+4. **next.config.ts rewrite 환경변수 게이트 추가** — Vercel 환경(INTERNAL_API_URL 미설정)에서 mock API 직접 응답
+5. **API Routes 43개에 force-dynamic 추가** — Vercel 동적 [id] 라우팅 안정화
+6. **수수료 페이지 정상화**:
+   - mock PG 마진을 `payment_method × card_company` 조합으로 재작성 (CARD×5 + BANK_TRANSFER + VIRTUAL_ACCOUNT + CASH = 8건)
+   - 신규 라우트: `/commissions/agents/[id]`, `/commissions/merchants/[id]`, `/commissions/history/[type]/[id]`
+   - 대리점/가맹점 탭을 텍스트 입력 → **드롭다운 자동 선택**으로 변경
+7. **심도 E2E 테스트 41개 작성** (`apps/web/e2e/live-deep.spec.ts`):
+   - Happy: admin 14, agent 3, merchant 3
+   - 비정상: 권한 우회 5, 인증 보호 4, 입력 변조 6, Pagination 4, 로그아웃 1
+   - **결과: 41/41 통과 (~70초)**
+8. **2026 PG 업계 표준 리서치 + 갭 분석** — 한국 PG사·PCI DSS 4.0·전자금융감독규정 2025.2.5 개정 등
+
+### 라이브 데모 사이트 검증 (2026-04-29)
+- ✅ 3개 사용자 유형 로그인 후 사이드바 메뉴 정상 표시 (각 권한별 12/6/5개)
+- ✅ 가맹점 5개, 대리점 3개, 거래 30개(오늘), 정산 15개, 입금 12개, 수수료 마진 8건 등 모든 데이터 정상 표시
+- ✅ 대리점/가맹점 수수료 탭 자동 선택 + 6건 + 3계층 비교 + 변경 이력
+- ✅ 심도 E2E 41개 시나리오 전부 통과
+
+### 갭 분석 결과 (2026 업계 표준 vs pg-system)
+- **시스템 플로우** 🟢 85/100 (KMS/해시체인/키로테이션 — 엔터프라이즈급)
+- **서비스 플로우** 🟢 75/100 (3계층 수수료 + 가맹점/대리점)
+- **사용자 플로우** 🟡 50/100 (결제창 다양화/KYC/3DS 2.x 추가 필요)
+- **컴플라이언스** 🟡 65/100 (PCI DSS 4.0 골격 ✅, 2024-2025 한국 법령 일부 미반영)
+- **2026 트렌드** 🔴 30/100 (FDS/네트워크 토큰/BNPL/AI 미구현)
+
+### 🔜 다음 세션 할 일 (Plan A — 외부 감사 직전 최소 보완, 약 8시간)
+1. 웹훅 HMAC 서명 검증 강화 (1시간) — 데모 임팩트
+2. FDS 룰 기반 모듈 골격 + 4-5개 룰 (2시간)
+3. eKYC 본인인증 어댑터 인터페이스 mock (2시간)
+4. PCI DSS 4.0 매핑 문서 (`docs/pci-dss-compliance-map.md`) 갱신 (1시간)
+5. 결제창 4종 (popup/redirect/iframe/SDK) 데모 페이지 (2시간)
+
+또는 다른 후보:
+- LIVE_DEMO_GUIDE.md 작성 (외부 감사인용 시나리오 가이드)
+- Plan B (16h) AI FDS 시뮬레이터 + 3DS 2.x 시각화 + 정산 속도 옵션
+- Plan C (8주) 풀 로드맵 (BNPL + 네트워크 토큰 + 오픈뱅킹 + Embedded SDK)
+
+### 차단 요소
+- 없음
+
+### 이번 세션 커밋 (10개)
+- `9360cab` feat(web): mock 데이터 snake_case 전면 정합 + 대시보드 기본 오늘 + 심도 E2E
+- `69e7da7` fix(web): API Routes에 force-dynamic 추가
+- `534a525` test(web): 동적 [hello] 라우트로 Vercel 라우팅 디버깅
+- `a2df5c5` test: add ping endpoint
+- `c954436` fix(web): /api/* rewrite를 INTERNAL_API_URL 설정 시에만 활성화 ⭐
+- `cf4ac76` test(e2e): live-deep 시나리오 안정화 (40/40 통과)
+- `aab18f3` fix(web): 수수료 설정 페이지 mock 데이터 + 누락 라우트 추가
+- `cdc4491` fix(web): 수수료 페이지 대리점/가맹점 탭 UX 개선
+
+---
+
+## 2026-04-29 세션 기록 (#5 — Mock API Routes 구현 → 라이브 데모 로그인 작동) ✅ 완료
 
 ### 🎉 결과
 - **라이브 사이트 로그인 작동**: https://pg-system-demo.vercel.app/login
