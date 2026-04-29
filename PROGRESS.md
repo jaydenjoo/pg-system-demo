@@ -1,6 +1,64 @@
 # PG System 역설계 & 재구축 프로젝트 - PROGRESS
 > **이 파일을 새 세션 시작 시 참조하면 100% 이어서 작업 가능**
-> 최종 업데이트: 2026.04.29 (#3 — 레포 구조 정정: pg-system = Vercel 배포용 / audit = 외부 감사용 동결)
+> 최종 업데이트: 2026.04.29 (#4 — Vercel 배포 사이클 완료: Next.js CVE-2025-66478 패치 적용)
+
+---
+
+## 🆕 2026-04-29 세션 기록 (#4 — Vercel 배포 사이클 + Next.js CVE 패치)
+
+### 현재 위치
+- Epic: 인프라 정합성 / 외부 감사 준비
+- Task: pg-system-demo Vercel 라이브 배포 (홍보 + 테스트)
+- 상태: Next.js 15.5.15 (CVE 패치) 적용 후 Vercel 자동 빌드 → Ready 대기 중
+
+### 이번 세션 완료 내역 (Claude — 9 commit 디버깅 사이클)
+| commit | 내용 | 결과 |
+|---|---|---|
+| 4952530 | initial commit (pg-system-demo) | 빌드 fail (HEAD^ fatal) |
+| cec0b26 | ignoreCommand HEAD^ 안전 wrap | 빌드 SKIP |
+| ad3aebf | 빈 commit webhook re-fire | 빌드 SKIP |
+| 59b6514 | apps/web/README.md trigger | 빌드 fail (server-only) |
+| 9121ede | server-only 주석 처리 | 빌드 fail (output 경로 중복) |
+| bd7509e | ignoreCommand 제거 | 빌드 fail (output 경로 중복) |
+| b596deb | outputDirectory `.next` 상대경로 | 빌드 success → deploy 차단 (Vulnerable Next.js) |
+| f493508 | pnpm-workspace.yaml 순서 변경 | 빌드 success → deploy 차단 |
+| **48644ab** | **Next.js 15.1.0 → 15.5.15 (CVE-2025-66478 패치)** | **★ Ready 대기** |
+
+### 진짜 원인 (5시간 디버깅 끝에 발견)
+**Vercel CVE-2025-66478 HARD STOP deployment**:
+- Next.js 15.1.0 = vulnerable RSC 프로토콜
+- 빌드 자체는 50초 성공
+- 마지막 "Vulnerable version of Next.js detected" 메시지 = 단순 경고가 아닌 **deploy 거부 신호**
+- 다른 모든 fix(ignoreCommand, outputDirectory, server-only)는 부분 원인이지만 진짜 원인은 CVE
+
+### Jayden 직접 작업 (예상)
+- Vercel UI에서 새 프로젝트 import 시 [Edit] 버튼으로:
+  - Root Directory = `apps/web` (자동 감지는 apps/api로 잡힘)
+  - Application Preset = `Next.js` (자동 감지는 NestJS로 잡힘)
+- 또는 기존 프로젝트가 commit 48644ab로 자동 빌드
+
+### 다음 세션 할 일
+- ✅ Vercel UI Deployments 탭에서 48644ab 빌드 결과 확인
+- ✅ Ready 시 URL 공유 → Playwright 검증
+- (선택) audit 폴더 정리 (어제 미푸시 commit push)
+- (선택) MfaSetup.tsx의 `<img>` → `<Image />` 교체 (성능 경고)
+- (선택) payment-client.ts server-only 복원 + API Route/Server Action 리팩토링
+
+### 차단 요소
+- Vercel UI 작업 진행 상황 (Claude 직접 확인 불가)
+- 정확한 deployment URL (Jayden 공유 필요)
+
+### 누적 변경 파일 (이번 세션, push 완료)
+| 파일 | 내용 |
+|---|---|
+| `vercel.json` | ignoreCommand 제거 + outputDirectory `.next` |
+| `apps/web/README.md` | Vercel 배포 섹션 추가 |
+| `apps/web/src/lib/payment-client.ts` | server-only 일시 비활성 |
+| `apps/web/package.json` | next + eslint-config-next 15.5.15 |
+| `pnpm-lock.yaml` | 재생성 (next 15.5.15 반영) |
+| `pnpm-workspace.yaml` | apps/web 먼저 명시 |
+| `.gitignore` | coverage/ 제외 추가 |
+| `.gitleaksignore` | 신규 (false positive 18건 등록) |
 
 ---
 

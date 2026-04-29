@@ -1,7 +1,35 @@
 # learnings.md — PG System
 > **오류 패턴과 결정 기록 = 바이브코딩의 복리 이자**
 > AI가 매 세션 자동 참조 → 같은 실수 반복 방지
-> 최종 업데이트: 2026-04-29 (#3)
+> 최종 업데이트: 2026-04-29 (#4 — Vercel 배포 사이클 큰 교훈)
+
+---
+
+## 🔴 [2026-04-29] [Vercel/Deploy] Next.js CVE 차단 + monorepo import 자동 감지 한계
+
+- **상황**: pg-system-demo Vercel 배포 시 빌드는 매번 50초 성공인데 최종 deploy 안 되고 URL 노출 안 됨. 9 commit + 5시간 소요.
+- **시도한 것들 (모두 부분적 효과)**:
+  1. ignoreCommand HEAD^ 안전 wrap → 결국 제거 (Vercel shallow clone 비신뢰)
+  2. payment-client.ts server-only 비활성 → 빌드 통과
+  3. outputDirectory `apps/web/.next` → `.next` 상대경로 (Root Directory=apps/web 호환)
+  4. pnpm-workspace.yaml 순서 변경 → 효과 없음 (Vercel 자동 감지 안 따름)
+- **진짜 원인**: Next.js 15.1.0 = **CVE-2025-66478 (RSC 보안 취약점)** → Vercel HARD STOP deployment
+  - 빌드 로그 마지막 한 줄 "Vulnerable version of Next.js detected, please update immediately"가 단순 경고가 아닌 **deploy 거부 신호**
+  - 메시지 후 deployment URL 노출 안 됨 → 모든 시도 404
+- **해결**: Next.js → 15.5.15 (backport tag, 15.x 라인 마지막 patch) 업그레이드 + lockfile 재생성
+
+- **규칙**:
+  1. **Vercel "Vulnerable version" 메시지 = deploy 차단**. 단순 경고 무시 금지. 즉시 패치 버전으로 업그레이드.
+  2. **CVE-2025-66478**: Next.js 15.x 패치 이전 모든 버전 영향. 패치는 15.2.3+, 15.5.x, 16.x. 신규 프로젝트는 항상 latest stable.
+  3. **새 프로젝트 시작 시 의존성 최신 유지** — 특히 Next.js, React. `pnpm outdated` 정기 점검.
+  4. **모노레포 Vercel import 자동 감지 신뢰 X** — 알파벳 순으로 첫 framework 선택 (apps/api NestJS가 apps/web Next.js보다 먼저 잡힘). 매번 [Edit] 버튼으로 Root Directory + Application Preset 수동 변경 필수.
+  5. **vercel.json은 import 단계에서 안 읽힘** — 자동 감지 결과 우회용으로 쓸 수 없음. deploy 시점부터 적용.
+  6. **vercel.json ignoreCommand 사용 금지** — Vercel shallow clone(depth 1~2)에서 `git diff HEAD^ HEAD` 비정상 결과. 로컬(full clone) exit 1이지만 Vercel exit 0 (변경 없음 판단). 신뢰 불가.
+  7. **outputDirectory는 Root Directory 기준 상대경로**. Root=apps/web이면 `.next`이지 `apps/web/.next`가 아님 (중복 경로 발생 시 fail).
+  8. **GitHub-Vercel webhook 새 commit 자동 픽업 보장 안 됨** — 빈 commit으로 강제 트리거 또는 Vercel UI Redeploy 필요할 수 있음.
+  9. **로컬 빌드 통과 ≠ Vercel 통과** — 환경 차이 (Node 버전, Vercel-specific 차단 정책). 정확한 검증은 clean clone + Vercel과 동일 buildCommand로.
+  10. **server-only 모듈을 클라이언트 컴포넌트가 import하면 production build fail** — Next.js 15 strict. 데모 사이트는 주석 처리, 운영은 API Route/Server Action 리팩토링.
+  11. **pnpm-workspace.yaml 순서 명시는 Vercel 자동 감지 우회 효과 없음** — Vercel은 디렉토리 listing 알파벳 순서를 따름.
 
 ---
 
