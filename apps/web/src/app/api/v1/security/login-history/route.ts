@@ -3,6 +3,7 @@ import { getCurrentUser } from '../../_lib/auth-context';
 import { paginate, readPagination } from '../../_lib/mock-data';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const MOCK_LOGIN_HISTORY = Array.from({ length: 10 }, (_, i) => ({
   id: `lh-${String(i + 1).padStart(4, '0')}`,

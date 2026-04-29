@@ -1,0 +1,17 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - heading "PG System" [level=1] [ref=e5]
+      - paragraph [ref=e6]: 통합 로그인
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: 아이디
+        - textbox "아이디" [ref=e10]:
+          - /placeholder: 로그인 아이디
+          - text: admin
+      - generic [ref=e11]:
+        - generic [ref=e12]: 비밀번호
+        - textbox "비밀번호" [ref=e13]: Admin1234!@
+      - paragraph [ref=e17]: 서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.
+      - button "로그인" [ref=e14]
+  - alert [ref=e15]

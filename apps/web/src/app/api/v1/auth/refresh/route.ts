@@ -7,6 +7,7 @@ import { decodeMockJwt, makeAccessToken, makeRefreshToken } from '../../_lib/moc
 import { setAuthCookies, clearAuthCookies } from '../../_lib/cookies';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const refresh = request.cookies.get('refreshToken')?.value;

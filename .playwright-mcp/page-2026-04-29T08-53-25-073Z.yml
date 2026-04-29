@@ -1,0 +1,70 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - heading "PG System 결제 테스트" [level=1] [ref=e5]
+      - paragraph [ref=e6]: Mock 카드사 기반 테스트 결제 — 실제 청구되지 않습니다.
+    - generic [ref=e8]:
+      - group "주문 정보" [ref=e9]:
+        - generic [ref=e10]: 주문 정보
+        - generic [ref=e11]:
+          - generic [ref=e12]: 주문번호
+          - textbox "주문번호" [ref=e13]: ORDER-1777452805060
+        - generic [ref=e14]:
+          - generic [ref=e15]: 상품명
+          - textbox "상품명" [ref=e16]: 테스트 상품
+        - generic [ref=e17]:
+          - generic [ref=e18]: 결제 금액 (원)
+          - spinbutton "결제 금액 (원)" [ref=e19]: "10000"
+      - group "주문자 정보" [ref=e20]:
+        - generic [ref=e21]: 주문자 정보
+        - generic [ref=e22]:
+          - generic [ref=e23]: 주문자명
+          - textbox "주문자명" [ref=e24]: 홍길동
+        - generic [ref=e25]:
+          - generic [ref=e26]: 이메일
+          - textbox "이메일" [ref=e27]: test@example.com
+      - group "카드 정보" [ref=e28]:
+        - generic [ref=e29]: 카드 정보
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - generic [ref=e32]: 카드번호
+            - textbox "카드번호" [ref=e33]:
+              - /placeholder: "4111111111111111"
+              - text: "4111111111111111"
+          - button "보기" [ref=e34]
+        - generic [ref=e35]:
+          - generic [ref=e36]: 카드 소유자명
+          - textbox "카드 소유자명" [ref=e37]: 홍길동
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - generic [ref=e40]: 유효기간(MM)
+            - textbox "유효기간(MM)" [ref=e41]:
+              - /placeholder: MM
+              - text: "12"
+          - generic [ref=e42]:
+            - generic [ref=e43]: 유효기간(YY)
+            - textbox "유효기간(YY)" [ref=e44]:
+              - /placeholder: YY
+              - text: "28"
+          - generic [ref=e45]:
+            - generic [ref=e46]: CVV
+            - textbox "CVV" [ref=e47]:
+              - /placeholder: "***"
+              - text: "123"
+        - generic [ref=e48]:
+          - generic [ref=e49]: 할부
+          - combobox "할부" [ref=e50]:
+            - option "일시불" [selected]
+            - option "2개월"
+            - option "3개월"
+            - option "4개월"
+            - option "5개월"
+            - option "6개월"
+            - option "9개월"
+            - option "12개월"
+            - option "18개월"
+            - option "24개월"
+            - option "36개월"
+      - button "결제하기" [ref=e52]
+      - paragraph [ref=e53]: Mock 카드사를 사용하는 테스트 결제입니다. 실제 청구되지 않습니다.
+  - alert [ref=e54]

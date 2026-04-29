@@ -3,6 +3,7 @@ import { getCurrentUser } from '../../../_lib/auth-context';
 import { MOCK_AGENT_SETTLEMENTS, paginate, readPagination } from '../../../_lib/mock-data';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,

@@ -3,6 +3,7 @@ import { getCurrentUser } from '../../_lib/auth-context';
 import { paginate, readPagination } from '../../_lib/mock-data';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const MOCK_RISK_ALERTS = [
   { id: 'risk-001', severity: 'high' as const, type: 'UNUSUAL_AMOUNT', description: '평소보다 5배 큰 금액 결제', merchantId: 'mch-002', merchantName: '서울 베이커리', createdAt: '2026-04-29T07:30:00.000Z', resolved: false },

@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { getCurrentUser } from '../../../_lib/auth-context';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const schema = z.object({
   currentPassword: z.string().min(1),

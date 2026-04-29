@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getCurrentUser } from '../../_lib/auth-context';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const MOCK_NOTIFICATIONS = [
   { id: 'noti-1', title: '미정산 입금 2건', message: '입금 매칭이 필요합니다.', severity: 'warning' as const, read: false, createdAt: '2026-04-29T08:30:00.000Z' },

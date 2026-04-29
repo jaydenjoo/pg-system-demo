@@ -7,6 +7,7 @@ import { getCurrentUser } from '../../_lib/auth-context';
 import { findUserById, serializeUser } from '../../_lib/mock-users';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const claims = getCurrentUser(request);

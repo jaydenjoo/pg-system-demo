@@ -9,6 +9,7 @@ import { makeAccessToken, makeRefreshToken } from '../../../_lib/mock-jwt';
 import { setAuthCookies } from '../../../_lib/cookies';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const mfaSchema = z.object({
   code: z.string().regex(/^\d{6}$/, '6자리 숫자를 입력해주세요'),

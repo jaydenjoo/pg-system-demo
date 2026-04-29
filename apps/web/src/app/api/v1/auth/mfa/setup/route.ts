@@ -6,6 +6,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getCurrentUser } from '../../../_lib/auth-context';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const claims = getCurrentUser(request);

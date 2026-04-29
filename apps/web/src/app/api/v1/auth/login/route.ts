@@ -9,6 +9,7 @@ import { makeAccessToken, makeRefreshToken, type MockJwtPayload } from '../../_l
 import { setAuthCookies } from '../../_lib/cookies';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const loginSchema = z.object({
   loginId: z.string().min(1),
