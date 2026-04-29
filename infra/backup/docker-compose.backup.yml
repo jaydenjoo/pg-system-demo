@@ -1,0 +1,52 @@
+services:
+  backup:
+    image: postgres:16-alpine
+    container_name: pg-system-backup
+    # 환경변수는 .env 또는 .env.docker에서 로드
+    env_file:
+      - path: ../../.env
+        required: false
+      - path: ../../.env.docker
+        required: false
+    environment:
+      # DB 접속 정보 (docker-compose.yml의 db 서비스와 일치)
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      # 백업 암호화 키 (필수 — .env에 반드시 설정)
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY}
+      # 보관 기간 (기본 30일)
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      # S3 업로드 (선택)
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+      # Slack 알림 (선택)
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+    volumes:
+      # DB 데이터 볼륨 (pg_dump 직접 접근용 아님 — 컨테이너 내 psql 연결 방식 사용)
+      - ../../scripts/backup-database.sh:/scripts/backup-database.sh:ro
+      - ../../scripts/backup-verify.sh:/scripts/backup-verify.sh:ro
+      - ../../infra/backup/crontab:/etc/crontabs/root:ro
+      - backup-data:/backups
+    command: >
+      sh -c "
+        apk add --no-cache openssl aws-cli curl bash &&
+        chmod +x /scripts/backup-database.sh /scripts/backup-verify.sh &&
+        echo 'Backup service started. Running cron...' &&
+        crond -f -l 2
+      "
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - pg-internal
+
+volumes:
+  backup-data:
+    name: pg-system-backup-data
+
+networks:
+  pg-internal:
+    external: true
+    name: pg-system_pg-internal

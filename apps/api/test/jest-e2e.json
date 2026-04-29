@@ -1,0 +1,13 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.ts$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^@pg-system/shared$": "<rootDir>/../../packages/shared/dist"
+  },
+  "setupFilesAfterEnv": ["<rootDir>/test/setup.ts"]
+}

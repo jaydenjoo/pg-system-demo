@@ -1,0 +1,9 @@
+# PG System 자동 백업 스케줄
+# 형식: 분 시 일 월 요일 명령어
+# 타임존: UTC 기준 (한국 KST = UTC+9)
+
+# ── 일일 백업: 매일 02:00 UTC (KST 11:00) ─────────────────────────────────
+0 2 * * * /scripts/backup-database.sh >> /backups/logs/cron_backup.log 2>&1
+
+# ── 주간 검증: 매주 일요일 04:00 UTC (KST 13:00) ──────────────────────────
+0 4 * * 0 /scripts/backup-verify.sh >> /backups/logs/cron_verify.log 2>&1

@@ -1,0 +1,44 @@
+# Dependencies
+**/node_modules
+
+# Build outputs
+.next
+dist
+coverage
+
+# Environment
+.env*
+
+# Git
+.git
+.gitignore
+
+# Docs & samples
+sample/
+docs/
+*.md
+!README.md
+
+# Test files
+**/test/
+**/tests/
+**/*.spec.ts
+**/*.test.ts
+
+# Playwright / E2E
+e2e/
+playwright-report/
+test-results/
+playwright.config.ts
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+.turbo

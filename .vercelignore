@@ -1,0 +1,12 @@
+# Vercel은 apps/web 전용으로 빌드합니다. apps/api 및 인프라 자료는 빌드 컨텍스트에 포함하지 않습니다.
+apps/api
+infra
+docker-compose.yml
+docker-compose.dev.yml
+prometheus
+scripts
+tests
+reports
+.playwright-mcp
+e2e
+playwright.config.ts

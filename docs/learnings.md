@@ -1,0 +1,172 @@
+# learnings.md — PG System
+> **오류 패턴과 결정 기록 = 바이브코딩의 복리 이자**
+> AI가 매 세션 자동 참조 → 같은 실수 반복 방지
+> 최종 업데이트: 2026-04-29 (#3)
+
+---
+
+## 🔴 [2026-04-29] [Process/Git] 레포 의도 — audit ≠ 정식 레포 (AI 방향 이탈)
+
+- **상황**: PG System은 두 폴더 보유 — `pg-system`(작업+Vercel 배포용)과 `pg-system-audit`(외부 감사 동결 스냅샷). 어제 워크스페이스 부모 git 정리 작업 후 PROGRESS.md(#1)에 "정식 레포 = audit"으로 잘못 기록.
+- **AI가 한 것**: 어제 audit에 vercel.json/.vercelignore 추가 + 오늘 audit의 e2e spec 2개 수정. 즉 **외부 감사용 동결 폴더에 배포/테스트 변경분 4개를 묻어버림**. push 직전 단계에서 Jayden이 의도("audit은 감사용, pg-system은 Vercel 배포")를 명시해서 발견.
+- **문제**: audit GitHub 레포의 첫 commit 메시지가 "PG System **외부감사용** 코드베이스 초기 커밋"이라고 명시했음에도, AI가 "git 있는 폴더 = 정식 레포"로 단정하고 작업 위치를 잡은 것이 근본 원인. "git 있음"과 "정식 작업 디렉토리"는 다른 차원의 정보임에도 동일시함.
+- **올바른 방향**: 두 폴더(또는 sanitize된 사본)가 존재할 때는 commit 메시지 / 폴더명 / Jayden 의도를 먼저 확인하고 작업 위치를 결정. git 있는 곳을 자동으로 정식으로 가정하지 않음.
+- **프롬프트 교훈**:
+  1. **다중 폴더 프로젝트 진입 시 첫 질문**: "어느 폴더가 정식 작업 디렉토리고, 어느 게 백업/스냅샷인가?" — 추측 금지, Jayden 확인 필수.
+  2. **commit 메시지의 의도 단서를 무시하지 말 것**: "외부감사용", "스냅샷", "백업", "archive" 등 키워드가 보이면 작업 위치 후보에서 제외하고 Jayden 확인.
+  3. **PROGRESS.md에 "정식 레포 = X" 같은 단정 기록 시 근거 출처 명시**: 단순 추정이면 "추정"임을 표시. Jayden 확인 후에만 단정 표시.
+  4. **Vercel/배포 시스템 연결 위치는 작업 위치 결정의 핵심 단서** — 배포 대상은 정식 작업 디렉토리, 외부 감사 스냅샷이 아님.
+  5. **의심스러우면 단도직입**: "X 폴더와 Y 폴더 둘 다 있는데 어떤 의도예요?" 한 줄이면 충분. 짐작 코딩 금지.
+  6. 회복 비용: 묻혀버린 변경분 4개 옮기기 + audit 정리 + pg-system git init + 첫 commit + 새 GitHub 레포 + Vercel 재연결 ≈ 30~40분. 첫 질문 한 줄로 예방 가능했음.
+
+---
+
+## 🟡 [2026-04-29] [E2E/Playwright] 페이지 헤더 매칭은 getByRole('heading')만
+
+- **증상**: `pg-system-audit/apps/web/e2e/merchants.spec.ts:9`와 `users.spec.ts:9`가 풀 e2e에서 strict mode violation으로 fail. `page.getByText("가맹점 관리")` / `page.getByText("사용자 관리")`가 nav 링크 + h1 헤딩 두 element에 동시 매칭됨. 어제 1차 보고는 merchants만 표면화(첫 fail에서 보고됨)되었으나 실제로는 users도 동일 회귀 잠복 상태.
+- **원인**: shadcn/Tailwind 기반 레이아웃에서 사이드바 nav `<a>`와 페이지 헤더 `<h1>`이 같은 텍스트를 공유. Playwright strict mode는 단일 매칭을 요구하므로 다중 매칭 시 throw. `getByText`는 텍스트만 보고 모든 element를 매칭하므로 공유 레이아웃에서 anti-pattern.
+- **해결**: 두 spec 모두 `page.getByRole("heading", { name: "..." })`로 교체. nav `<a>`(role="link")는 자동 제외되어 단일 매칭. 풀 e2e 12/12 PASS 회복.
+- **규칙**:
+  1. **e2e에서 페이지 도달 검증은 반드시 `getByRole("heading", { name })` 사용** — `getByText`는 nav/사이드바와 충돌 위험 상시 존재.
+  2. 한 spec에서 동일 anti-pattern 발견 시 다른 spec도 즉시 grep — 공통 레이아웃을 공유하는 모든 페이지 spec에 동일 회귀 잠복 가능.
+  3. KPI 카드/통계 라벨처럼 단일 매칭이 보장되는 경우만 `getByText` 허용. 정 어쩔 수 없으면 부모 컨테이너로 scope 좁히기(`page.locator("main").getByText(...)`).
+  4. 페이지 컴포넌트 작성 시 헤더는 반드시 `<h1>` 또는 `<h2>` semantic element로 — div 헤더는 a11y(접근성)와 e2e 둘 다 망친다.
+  5. 풀 e2e fail 보고 시 `--reporter=list`로 모든 fail 한 번에 확인 — first-failure만 보면 동일 원인 회귀가 가려짐.
+
+---
+
+## 🔴 [2026-04-29] [Git] 워크스페이스 부모 폴더에 .git 두지 말 것
+
+- **증상**: `/Users/jayden/project/`가 dairect 레포로 init되어 있어 자매 프로젝트(pg-system 566파일, autovox, chatsio-v1, CouncilAI, Findably 등)가 통째로 dairect remote에 추적 중. 다행히 push 안 됨.
+- **원인**: 과거 어느 시점 부모 디렉토리에서 `git clone https://github.com/jaydenjoo/dairect.git .` 또는 `git init` 실행 흔적. dairect는 별도로 `/Users/jayden/project/dairect/.git`도 가지고 있어 이중 git 상태.
+- **해결**: 부모 `.git` → `.git.OBSOLETE.bak` rename → 휴지통 이동. 미푸시 12개 PG 작업 commit은 `_archive/pg-system-recovered-patches/`에 patch 백업 후 폐기.
+- **규칙**:
+  1. **워크스페이스 컨테이너 폴더(여러 프로젝트가 공존하는 부모)에는 절대 `git init` / `git clone .` 금지.** 각 프로젝트 폴더 안에만 자기 `.git`을 둘 것.
+  2. 새 프로젝트 셋업 시 첫 명령은 반드시 해당 프로젝트 폴더 안에서 실행 (`cd <project>` 후 `git init`).
+  3. 의심 시 `git rev-parse --show-toplevel`로 git 루트 확인. 결과가 부모 디렉토리면 즉시 rename으로 비활성화.
+  4. 대규모 작업 commit은 push 잊지 말 것 — 12개 PG commit이 push 안 된 채 부모 좀비 git에서만 살고 있었음.
+
+---
+
+## 🔴 [2026-04-29] [Vercel] NestJS API는 Vercel serverless에 배포 금지
+
+- **증상**: `git@github.com:jaydenjoo/pg-system.git` Vercel 빌드가 330개 TS 에러로 실패. 모든 에러가 `Property 'X' does not exist on type 'PrismaService'`.
+- **원인**:
+  1. pnpm 10이 `@prisma/client` postinstall(`prisma generate`)을 보안상 자동 차단(`Ignored build scripts`)
+  2. `apps/api/package.json`의 build script는 `nest build`만 호출 → prisma 타입 미생성 상태에서 typecheck → 모든 모델 type 누락
+  3. 더 근본적으로 NestJS는 long-running server라 Vercel serverless functions에 부적합 (cold start, 10s 한계, BullMQ/스케줄러 미작동, DB pool exhaustion)
+- **해결**:
+  - **단기**(빌드 통과): `apps/api/package.json` build script에 `prisma generate &&` 선행 + 루트 `package.json`에 `pnpm.onlyBuiltDependencies` 화이트리스트 추가
+  - **근본**(채택): Vercel을 web 전용으로 분리. `pg-system-audit/vercel.json`에 `turbo run build --filter=@pg-system/web` + `.vercelignore`로 apps/api 제외. NestJS API는 Docker로 운영.
+- **규칙**:
+  1. **NestJS / long-running 서버 → Vercel 절대 금지.** Railway / Render / Fly.io / VPS / 컨테이너 호스팅으로.
+  2. **Prisma + pnpm 10 조합**: build script에 `prisma generate &&` 명시 + root `package.json`에 `"pnpm": { "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "prisma", ...] }` 화이트리스트 필수.
+  3. 모노레포 + Vercel은 `vercel.json` `buildCommand`에 turbo `--filter=<package>`로 명시 — 의도하지 않은 패키지가 빌드 그래프에 끌려오지 않도록.
+  4. PG 시스템(🔴 결제) 프로덕션은 PCI DSS 인증 환경(NHN Cloud / AWS Seoul) 필수. 일반 PaaS는 PoC/내부 데모까지만.
+
+---
+
+## 🟡 [2026-04-29] [Migration] drizzle-kit push의 비인터랙티브 막힘
+
+- **증상**: dairect e2e 환경에서 `pnpm db:push`가 "invoices_workspace_number_unique 제약 추가 시 truncate 묻는 prompt" → TTY 부재로 throw. `supabase db reset` 후에도 동일 prompt.
+- **원인**: drizzle-kit 0.31.10이 schema 변경 중 데이터 손실 가능성을 확인하기 위해 인터랙티브 prompt를 띄우는데, 이 prompt 자체가 TTY 없는 셸에서 throw로 처리됨. supabase db reset은 supabase migrations 폴더 기반이라 dairect의 drizzle migrations와 무관(미적용).
+- **해결**: `docker exec -i supabase_db_dairect psql -v ON_ERROR_STOP=1 < migrations/NNNN_*.sql`을 정렬 순서대로 직접 실행. 42개 SQL 일괄 적용 → 23 테이블 정상 생성.
+- **규칙**:
+  1. **CI/자동화 환경에서는 `drizzle-kit push` 사용 금지** (TTY 의존). `drizzle-kit migrate` 또는 SQL 파일 직접 적용.
+  2. supabase 프로젝트가 drizzle migrations를 쓰는 경우 `supabase db reset`은 의미 없음 — 별도로 drizzle SQL 적용 단계가 필요.
+  3. 마이그레이션 파일은 반드시 `0NNN_*.sql` 정렬 순서로 적용. journal 파일(`_meta/_journal.json`)이 없거나 stale하면 `drizzle-kit migrate`도 무동작이라 SQL 직접 실행이 가장 안전.
+
+---
+
+## 🟡 [2026-04-29] [Docs] 시연 자격증명은 seed.ts를 SOT로 — DEMO 문서 drift 차단
+
+- **증상**: `docs/DEMO_SCENARIO.md`에 적힌 `admin@pgsystem.co.kr` / `Admin1234!@#$` / `localhost:3001`로 로그인 시도가 모두 실패. 실제 seed는 `login_id="admin"` / `Admin1234!@` / `localhost:3500`.
+- **원인**: 시드 코드(`apps/api/prisma/seed.ts`)가 변경되었으나 데모 문서가 따라가지 않음. 추가로 API DTO는 camelCase(`loginId`)인데 문서엔 snake_case 인상.
+- **해결**: 문서를 seed.ts 실제값으로 정정 + `로그인 ID는 이메일이 아닌 login_id` 명시 + Prisma 6+ 대응 seed 명령(`npx tsx prisma/seed.ts`) 가이드.
+- **규칙**:
+  1. **데모/온보딩 문서의 자격증명은 seed.ts를 단일 진실원천(SOT)으로 인용 형식 사용**. 가능하면 seed 콘솔 출력을 그대로 붙여넣고 코드 변경 시 문서 업데이트를 같은 PR에서 처리.
+  2. seed 환경변수(`SEED_ADMIN_PASSWORD` 등)가 있으면 문서에 명시 — 기본값 + override 방법 둘 다.
+  3. API DTO 케이스(camelCase vs snake_case)도 데모 문서에 명시 — Postman/cURL 예시 누가 봐도 따라할 수 있게.
+
+---
+
+---
+
+## 📌 기록 규칙
+- 2번 이상 반복된 에러만 기록
+- 해결에 30분 이상 걸린 에러 기록
+- AI가 잘못된 방향으로 간 패턴 기록
+- "이 방식 대신 저 방식" 결정 기록
+- 단순 오타, 1분 해결, 일회성 환경 문제는 기록하지 않음
+
+---
+
+## 🐛 에러 패턴 (Error Patterns)
+
+### 카테고리: [Docker / Supabase / n8n / Next.js / 기타]
+
+<!--
+아래 형식으로 기록:
+
+## [날짜] [카테고리] - [에러 제목 한 줄]
+- **증상**: [어떤 에러 메시지가 나왔는지]
+- **원인**: [왜 발생했는지]
+- **해결**: [어떻게 고쳤는지]
+- **규칙**: [다음에 이걸 방지하려면 어떻게 해야 하는지] ← 가장 중요!
+-->
+
+(아직 없음 — Task 완료 시 자동 추가됨)
+
+---
+
+## 🔀 AI 방향 이탈 패턴 (AI Went Wrong)
+
+<!--
+AI가 잘못된 방향으로 코드를 작성한 경우 기록:
+
+## [날짜] AI가 [무엇을] 잘못함
+- **상황**: [어떤 지시를 했는지]
+- **AI가 한 것**: [AI가 실제로 무엇을 했는지]
+- **문제**: [왜 그게 잘못인지]
+- **올바른 방향**: [이렇게 했어야 했다]
+- **프롬프트 교훈**: [다음에 AI에게 이렇게 지시해야 한다]
+-->
+
+(아직 없음)
+
+---
+
+## 🔑 설계 결정 기록 (Design Decisions)
+
+<!--
+"A 방식 vs B 방식" 중 선택한 이유:
+
+## [날짜] [결정 제목]
+- **선택지**: A 방식 vs B 방식
+- **선택**: [A/B] 방식
+- **이유**: [왜 이걸 선택했는지]
+- **트레이드오프**: [선택하지 않은 것의 장점은 무엇이었는지]
+-->
+
+(아직 없음)
+
+---
+
+## 📊 누적 통계
+- 총 기록 수: 0
+- 에러 패턴: 0
+- AI 이탈 패턴: 0
+- 설계 결정: 0
+- 가장 자주 발생하는 카테고리: (없음)
+### [2026-03-05] AGENTS.md/CLAUDE.md 작성 원칙 (ETH Zurich 연구)
+
+**증상:** 컨텍스트 파일이 길수록 AI 성능이 좋아질 거라 가정
+**원인:** AI가 이미 아는 내용을 반복하면 → 토큰 낭비 + 불필요한 탐색 증가 + 성능 저하
+**해결:** "AI가 코드만 봐서 절대 모를 것"만 작성
+
+**규칙:**
+1. CLAUDE.md/Custom Instructions에 코딩 상식(SRP, 에러처리 등) 쓰지 않기
+2. 쓸 것: 도구 선택, 비관적 제약, 시스템 특화 정보 (3가지만)
+3. 문서가 계속 늘어나면 → 코드/구조 문제 의심 먼저
+4. /init 자동생성 CLAUDE.md 사용 금지 → 반드시 수동 작성
+5. 300줄 이하 유지 (프로: 60줄 이하)

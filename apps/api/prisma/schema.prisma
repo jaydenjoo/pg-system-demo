@@ -1,0 +1,708 @@
+// PG System — Prisma Schema
+// DB: PostgreSQL (전용 서버, localhost:5432/pg_system_dev)
+// 기반: phase4-er-diagram.md (30 테이블)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// 1. 인증/사용자 도메인
+// ============================================================
+
+model users {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  login_id            String    @unique @db.VarChar(100)
+  password_hash       String    @db.VarChar(255)
+  name                String    @db.VarChar(100)
+  email               String?   @db.VarChar(255)
+  phone               String?   @db.VarChar(50)
+  user_type           String    @db.VarChar(20)
+  status              String    @default("ACTIVE") @db.VarChar(20)
+  failed_login_count  Int       @default(0)
+  locked_until        DateTime? @db.Timestamptz()
+  last_login_at       DateTime? @db.Timestamptz()
+  password_changed_at DateTime? @db.Timestamptz()
+  org_id              String?   @db.Uuid
+  merchant_id         String?   @db.Uuid
+  agent_id            String?   @db.Uuid
+  created_at          DateTime  @default(now()) @db.Timestamptz()
+  created_by          String?   @db.Uuid
+  updated_at          DateTime  @updatedAt @db.Timestamptz()
+  updated_by          String?   @db.Uuid
+  deleted_at          DateTime? @db.Timestamptz()
+
+  merchants       merchants?      @relation(fields: [merchant_id], references: [id])
+  agents          agents?         @relation(fields: [agent_id], references: [id])
+  user_mfa        user_mfa[]
+  user_roles      user_roles[]
+  refresh_tokens  refresh_tokens[]
+  login_history   login_history[]
+  notifications   notifications[]
+
+  @@index([deleted_at])
+  @@index([merchant_id])
+  @@index([agent_id])
+}
+
+model user_mfa {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  mfa_type   String   @db.VarChar(20)
+  secret_key String   @db.VarChar(500)
+  is_verified Boolean @default(false)
+  is_primary  Boolean @default(false)
+  created_at  DateTime @default(now()) @db.Timestamptz()
+  updated_at  DateTime @updatedAt @db.Timestamptz()
+
+  users users @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, mfa_type])
+}
+
+model roles {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique @db.VarChar(50)
+  description String?  @db.VarChar(255)
+  user_type   String   @db.VarChar(20)
+  created_at  DateTime @default(now()) @db.Timestamptz()
+  updated_at  DateTime @updatedAt @db.Timestamptz()
+
+  user_roles       user_roles[]
+  role_permissions role_permissions[]
+}
+
+model permissions {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code       String   @unique @db.VarChar(100)
+  name       String   @db.VarChar(100)
+  resource   String   @db.VarChar(50)
+  action     String   @db.VarChar(20)
+  created_at DateTime @default(now()) @db.Timestamptz()
+
+  role_permissions role_permissions[]
+}
+
+model user_roles {
+  user_id     String   @db.Uuid
+  role_id     String   @db.Uuid
+  assigned_at DateTime @default(now()) @db.Timestamptz()
+  assigned_by String?  @db.Uuid
+
+  users users @relation(fields: [user_id], references: [id])
+  roles roles @relation(fields: [role_id], references: [id])
+
+  @@id([user_id, role_id])
+}
+
+model role_permissions {
+  role_id       String @db.Uuid
+  permission_id String @db.Uuid
+
+  roles       roles       @relation(fields: [role_id], references: [id])
+  permissions permissions @relation(fields: [permission_id], references: [id])
+
+  @@id([role_id, permission_id])
+}
+
+model refresh_tokens {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @db.Uuid
+  token_hash  String    @unique @db.VarChar(255)
+  device_info String?   @db.VarChar(500)
+  ip_address  String?   @db.Inet
+  expires_at  DateTime  @db.Timestamptz()
+  revoked_at  DateTime? @db.Timestamptz()
+  created_at  DateTime  @default(now()) @db.Timestamptz()
+
+  users users @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@index([expires_at])
+}
+
+// ============================================================
+// 2. 조직 관리 도메인
+// ============================================================
+
+model companies {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  business_no       String    @unique @db.VarChar(20)
+  company_name      String    @db.VarChar(200)
+  representative    String    @db.VarChar(100)
+  business_type     String    @db.VarChar(20)
+  business_category String?   @db.VarChar(100)
+  business_item     String?   @db.VarChar(200)
+  address           String?   @db.VarChar(500)
+  zipcode           String?   @db.VarChar(10)
+  phone             String?   @db.VarChar(50)
+  email             String?   @db.VarChar(255)
+  created_at        DateTime  @default(now()) @db.Timestamptz()
+  created_by        String?   @db.Uuid
+  updated_at        DateTime  @updatedAt @db.Timestamptz()
+  updated_by        String?   @db.Uuid
+  deleted_at        DateTime? @db.Timestamptz()
+
+  agents    agents[]
+  merchants merchants[]
+}
+
+model agents {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  company_id          String    @db.Uuid
+  parent_id           String?   @db.Uuid
+  agent_code          String    @unique @db.VarChar(20)
+  agent_name          String    @db.VarChar(200)
+  tree_path           String?
+  tree_depth          Int       @default(0)
+  status              String    @default("ACTIVE") @db.VarChar(20)
+  contract_start_date DateTime? @db.Date
+  contract_end_date   DateTime? @db.Date
+  bank_name           String?   @db.VarChar(50)
+  bank_account        String?   @db.VarChar(100) // TODO: AES-256-GCM 암호화 적용 필요 (PCI DSS 요구사항)
+  bank_holder         String?   @db.VarChar(100)
+  created_at          DateTime  @default(now()) @db.Timestamptz()
+  created_by          String?   @db.Uuid
+  updated_at          DateTime  @updatedAt @db.Timestamptz()
+  updated_by          String?   @db.Uuid
+  deleted_at          DateTime? @db.Timestamptz()
+
+  companies         companies           @relation(fields: [company_id], references: [id])
+  parent            agents?             @relation("AgentTree", fields: [parent_id], references: [id])
+  children          agents[]            @relation("AgentTree")
+  merchants         merchants[]
+  users             users[]
+  agent_commissions agent_commissions[]
+  agent_settlements agent_settlements[]
+
+  @@index([company_id])
+  @@index([parent_id])
+}
+
+model merchants {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  company_id          String    @db.Uuid
+  agent_id            String    @db.Uuid
+  merchant_code       String    @unique @db.VarChar(20)
+  merchant_name       String    @db.VarChar(200)
+  status              String    @default("PENDING") @db.VarChar(20)
+  contract_start_date DateTime? @db.Date
+  contract_end_date   DateTime? @db.Date
+  settlement_cycle    String    @default("D+2") @db.VarChar(20)
+  bank_name           String?   @db.VarChar(50)
+  bank_account        String?   @db.VarChar(100) // TODO: AES-256-GCM 암호화 적용 필요 (PCI DSS 요구사항)
+  bank_holder         String?   @db.VarChar(100)
+  quarterly_volume    BigInt    @default(0)
+  created_at          DateTime  @default(now()) @db.Timestamptz()
+  created_by          String?   @db.Uuid
+  updated_at          DateTime  @updatedAt @db.Timestamptz()
+  updated_by          String?   @db.Uuid
+  deleted_at          DateTime? @db.Timestamptz()
+
+  companies             companies               @relation(fields: [company_id], references: [id])
+  agents                agents                  @relation(fields: [agent_id], references: [id])
+  users                 users[]
+  merchant_terminals    merchant_terminals[]
+  merchant_commissions  merchant_commissions[]
+  merchant_item_fees    merchant_item_fees[]
+  transactions          transactions[]
+  settlements           settlements[]
+  risk_alerts           risk_alerts[]
+  pg_api_keys           pg_api_keys[]
+  pg_payment_orders     pg_payment_orders[]
+  card_tokens           card_tokens[]
+
+  @@index([agent_id])
+  @@index([company_id])
+}
+
+model merchant_terminals {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  merchant_id   String    @db.Uuid
+  tid           String    @unique @db.VarChar(30)
+  terminal_name String?   @db.VarChar(100)
+  payment_method String   @db.VarChar(20)
+  status        String    @default("ACTIVE") @db.VarChar(20)
+  created_at    DateTime  @default(now()) @db.Timestamptz()
+  created_by    String?   @db.Uuid
+  updated_at    DateTime  @updatedAt @db.Timestamptz()
+  updated_by    String?   @db.Uuid
+  deleted_at    DateTime? @db.Timestamptz()
+
+  merchants          merchants            @relation(fields: [merchant_id], references: [id])
+  transactions       transactions[]
+  merchant_item_fees merchant_item_fees[]
+}
+
+// ============================================================
+// 3. 수수료/마진 도메인
+// ============================================================
+
+model pg_default_margins {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  payment_method String    @db.VarChar(20)
+  card_company   String?   @db.VarChar(30)
+  margin_rate    Decimal   @db.Decimal(10, 4)
+  min_fee        BigInt    @default(0)
+  effective_from DateTime  @db.Date
+  effective_to   DateTime? @db.Date
+  created_at     DateTime  @default(now()) @db.Timestamptz()
+  created_by     String?   @db.Uuid
+  updated_at     DateTime  @updatedAt @db.Timestamptz()
+  updated_by     String?   @db.Uuid
+
+  @@index([payment_method, effective_from, effective_to])
+}
+
+model agent_commissions {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id        String    @db.Uuid
+  payment_method  String    @db.VarChar(20)
+  card_company    String?   @db.VarChar(30)
+  commission_rate Decimal   @db.Decimal(10, 4)
+  effective_from  DateTime  @db.Date
+  effective_to    DateTime? @db.Date
+  created_at      DateTime  @default(now()) @db.Timestamptz()
+  created_by      String?   @db.Uuid
+  updated_at      DateTime  @updatedAt @db.Timestamptz()
+  updated_by      String?   @db.Uuid
+
+  agents agents @relation(fields: [agent_id], references: [id])
+
+  @@index([agent_id])
+}
+
+model merchant_commissions {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  merchant_id     String    @db.Uuid
+  payment_method  String    @db.VarChar(20)
+  card_company    String?   @db.VarChar(30)
+  commission_rate Decimal   @db.Decimal(10, 4)
+  effective_from  DateTime  @db.Date
+  effective_to    DateTime? @db.Date
+  created_at      DateTime  @default(now()) @db.Timestamptz()
+  created_by      String?   @db.Uuid
+  updated_at      DateTime  @updatedAt @db.Timestamptz()
+  updated_by      String?   @db.Uuid
+
+  merchants merchants @relation(fields: [merchant_id], references: [id])
+
+  @@index([merchant_id])
+}
+
+model merchant_item_fees {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  merchant_id    String    @db.Uuid
+  terminal_id    String?   @db.Uuid
+  payment_method String    @db.VarChar(20)
+  card_company   String?   @db.VarChar(30)
+  fee_rate       Decimal   @db.Decimal(10, 4)
+  fee_amount     BigInt    @default(0)
+  effective_from DateTime  @db.Date
+  effective_to   DateTime? @db.Date
+  created_at     DateTime  @default(now()) @db.Timestamptz()
+  created_by     String?   @db.Uuid
+  updated_at     DateTime  @updatedAt @db.Timestamptz()
+  updated_by     String?   @db.Uuid
+
+  merchants          merchants           @relation(fields: [merchant_id], references: [id])
+  merchant_terminals merchant_terminals? @relation(fields: [terminal_id], references: [id])
+
+  @@index([merchant_id])
+  @@index([terminal_id])
+}
+
+// ============================================================
+// 4. 거래/결제 도메인
+// ============================================================
+
+model transactions {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tran_no          String    @unique @db.VarChar(30)
+  merchant_id      String    @db.Uuid
+  terminal_id      String?   @db.Uuid
+  tran_type        String    @db.VarChar(20)
+  payment_method   String    @db.VarChar(20)
+  status           String    @default("PENDING") @db.VarChar(20)
+  amount           BigInt
+  fee_amount       BigInt    @default(0)
+  net_amount       BigInt    @default(0)
+  vat_amount       BigInt    @default(0)
+  payment_detail   Json      @default("{}")
+  original_tran_id String?   @db.Uuid
+  requested_at     DateTime  @default(now()) @db.Timestamptz()
+  approved_at      DateTime? @db.Timestamptz()
+  cancelled_at     DateTime? @db.Timestamptz()
+  created_at       DateTime  @default(now()) @db.Timestamptz()
+  created_by       String?   @db.Uuid
+  updated_at       DateTime  @updatedAt @db.Timestamptz()
+  updated_by       String?   @db.Uuid
+
+  merchants            merchants              @relation(fields: [merchant_id], references: [id])
+  merchant_terminals   merchant_terminals?    @relation(fields: [terminal_id], references: [id])
+  original_transaction transactions?          @relation("TransactionCancels", fields: [original_tran_id], references: [id])
+  cancel_transactions  transactions[]         @relation("TransactionCancels")
+  deposit_transactions deposit_transactions[]
+  risk_alerts          risk_alerts[]
+  pg_payment_orders    pg_payment_orders[]
+
+  @@index([merchant_id])
+  @@index([status, approved_at])
+  @@index([terminal_id])
+}
+
+model payment_methods {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code       String   @unique @db.VarChar(20)
+  name       String   @db.VarChar(50)
+  category   String   @db.VarChar(20)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+}
+
+model card_bins {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bin_number   String   @unique @db.VarChar(8)
+  card_company String   @db.VarChar(50)
+  card_type    String   @db.VarChar(20)
+  card_brand   String?  @db.VarChar(20)
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now()) @db.Timestamptz()
+  updated_at   DateTime @updatedAt @db.Timestamptz()
+}
+
+// ============================================================
+// 5. 정산/입금 도메인
+// ============================================================
+
+model settlements {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  merchant_id     String    @db.Uuid
+  settlement_date DateTime  @db.Date
+  period_from     DateTime  @db.Date
+  period_to       DateTime  @db.Date
+  total_amount    BigInt    @default(0)
+  total_fee       BigInt    @default(0)
+  total_net       BigInt    @default(0)
+  deduction       BigInt    @default(0)
+  payout_amount   BigInt    @default(0)
+  tran_count      Int       @default(0)
+  cancel_count    Int       @default(0)
+  status          String    @default("CALCULATED") @db.VarChar(20)
+  remitted_at     DateTime? @db.Timestamptz()
+  created_at      DateTime  @default(now()) @db.Timestamptz()
+  created_by      String?   @db.Uuid
+  updated_at      DateTime  @updatedAt @db.Timestamptz()
+  updated_by      String?   @db.Uuid
+
+  merchants merchants @relation(fields: [merchant_id], references: [id])
+
+  @@unique([merchant_id, settlement_date])
+  @@index([settlement_date])
+}
+
+model agent_settlements {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id         String    @db.Uuid
+  settlement_date  DateTime  @db.Date
+  period_from      DateTime  @db.Date
+  period_to        DateTime  @db.Date
+  total_commission BigInt    @default(0)
+  tran_count       Int       @default(0)
+  status           String    @default("CALCULATED") @db.VarChar(20)
+  remitted_at      DateTime? @db.Timestamptz()
+  created_at       DateTime  @default(now()) @db.Timestamptz()
+  created_by       String?   @db.Uuid
+  updated_at       DateTime  @updatedAt @db.Timestamptz()
+  updated_by       String?   @db.Uuid
+
+  agents agents @relation(fields: [agent_id], references: [id])
+
+  @@unique([agent_id, settlement_date])
+  @@index([settlement_date])
+}
+
+model deposits {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deposit_date     DateTime @db.Date
+  source           String   @db.VarChar(50)
+  amount           BigInt
+  reconcile_status String   @default("PENDING") @db.VarChar(20)
+  matched_amount   BigInt   @default(0)
+  unmatched_amount BigInt   @default(0)
+  created_at       DateTime @default(now()) @db.Timestamptz()
+  created_by       String?  @db.Uuid
+  updated_at       DateTime @updatedAt @db.Timestamptz()
+  updated_by       String?  @db.Uuid
+
+  deposit_transactions deposit_transactions[]
+
+  @@index([deposit_date])
+  @@index([reconcile_status])
+}
+
+model deposit_transactions {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deposit_id     String   @db.Uuid
+  transaction_id String   @db.Uuid
+  matched_amount BigInt
+  created_at     DateTime @default(now()) @db.Timestamptz()
+
+  deposits     deposits     @relation(fields: [deposit_id], references: [id])
+  transactions transactions @relation(fields: [transaction_id], references: [id])
+
+  @@index([deposit_id])
+  @@index([transaction_id])
+}
+
+model escrow_records {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  record_date  DateTime @db.Date
+  escrow_type  String   @db.VarChar(20)
+  institution  String   @db.VarChar(100)
+  amount       BigInt
+  ratio        Decimal  @db.Decimal(5, 2)
+  document_ref String?  @db.VarChar(255)
+  created_at   DateTime @default(now()) @db.Timestamptz()
+  created_by   String?  @db.Uuid
+}
+
+// ============================================================
+// 6. 보안/감사 도메인
+// ============================================================
+
+model audit_logs {
+  id            String   @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String?  @db.Uuid
+  action        String   @db.VarChar(50)
+  resource_type String   @db.VarChar(50)
+  resource_id   String?  @db.VarChar(100)
+  detail        Json?
+  ip_address    String?  @db.Inet
+  user_agent    String?  @db.VarChar(500)
+  log_hash      String?  @db.VarChar(64)
+  prev_hash     String?  @db.VarChar(64)
+  created_at    DateTime @default(now()) @db.Timestamptz()
+
+  @@id([id, created_at])
+  @@index([user_id])
+  @@index([resource_type, resource_id])
+  @@index([created_at])
+}
+
+model login_history {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String   @db.Uuid
+  login_result String   @db.VarChar(20)
+  ip_address   String   @db.Inet
+  user_agent   String?  @db.VarChar(500)
+  mfa_type     String?  @db.VarChar(20)
+  created_at   DateTime @default(now()) @db.Timestamptz()
+
+  users users @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@index([created_at])
+}
+
+model risk_alerts {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  alert_type      String    @db.VarChar(50)
+  severity        String    @db.VarChar(10)
+  merchant_id     String?   @db.Uuid
+  transaction_id  String?   @db.Uuid
+  description     String
+  status          String    @default("OPEN") @db.VarChar(20)
+  resolved_by     String?   @db.Uuid
+  resolved_at     DateTime? @db.Timestamptz()
+  resolution_note String?
+  created_at      DateTime  @default(now()) @db.Timestamptz()
+
+  merchants    merchants?    @relation(fields: [merchant_id], references: [id])
+  transactions transactions? @relation(fields: [transaction_id], references: [id])
+
+  @@index([merchant_id])
+  @@index([status])
+}
+
+model encryption_key_metadata {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key_alias            String    @unique @db.VarChar(100)
+  key_purpose          String    @db.VarChar(50)
+  algorithm            String    @default("AES-256-GCM") @db.VarChar(30)
+  status               String    @default("ACTIVE") @db.VarChar(20)
+  rotation_period_days Int       @default(90)
+  last_rotated_at      DateTime? @db.Timestamptz()
+  next_rotation_at     DateTime? @db.Timestamptz()
+  created_at           DateTime  @default(now()) @db.Timestamptz()
+  updated_at           DateTime  @updatedAt @db.Timestamptz()
+}
+
+// ============================================================
+// 7. 시스템/설정 도메인
+// ============================================================
+
+model system_codes {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  group_code   String   @db.VarChar(30)
+  code         String   @db.VarChar(30)
+  name         String   @db.VarChar(100)
+  sort_order   Int      @default(0)
+  extra_value1 String?  @db.VarChar(200)
+  extra_value2 String?  @db.VarChar(200)
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now()) @db.Timestamptz()
+  updated_at   DateTime @updatedAt @db.Timestamptz()
+
+  @@unique([group_code, code])
+}
+
+model holidays {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  holiday_date DateTime @unique @db.Date
+  name         String   @db.VarChar(100)
+  year         Int
+  created_at   DateTime @default(now()) @db.Timestamptz()
+}
+
+model menus {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  parent_id           String?   @db.Uuid
+  code                String    @unique @db.VarChar(50)
+  name                String    @db.VarChar(100)
+  path                String?   @db.VarChar(255)
+  icon                String?   @db.VarChar(50)
+  sort_order          Int       @default(0)
+  is_active           Boolean   @default(true)
+  required_permission String?   @db.VarChar(100)
+  user_type           String    @db.VarChar(20)
+  created_at          DateTime  @default(now()) @db.Timestamptz()
+  updated_at          DateTime  @updatedAt @db.Timestamptz()
+
+  parent   menus?  @relation("MenuTree", fields: [parent_id], references: [id])
+  children menus[] @relation("MenuTree")
+}
+
+model notifications {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String?   @db.Uuid
+  type       String    @db.VarChar(30)
+  title      String    @db.VarChar(200)
+  content    String
+  is_read    Boolean   @default(false)
+  link       String?   @db.VarChar(500)
+  created_at DateTime  @default(now()) @db.Timestamptz()
+
+  users users? @relation(fields: [user_id], references: [id])
+
+  @@index([user_id, is_read])
+}
+
+// ============================================================
+// 8. PG Gateway 도메인
+// ============================================================
+
+model pg_api_keys {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  merchant_id     String   @db.Uuid
+  client_key      String   @unique @db.VarChar(64)
+  secret_key_hash   String   @db.VarChar(128)
+  secret_key_prefix String   @db.VarChar(16)
+  webhook_url       String?  @db.VarChar(512)
+  webhook_secret    String?  @db.VarChar(128)
+  is_active         Boolean  @default(true)
+  allowed_ips       String[] @default([])
+  created_at        DateTime @default(now()) @db.Timestamptz()
+  updated_at        DateTime @updatedAt @db.Timestamptz()
+
+  merchants         merchants           @relation(fields: [merchant_id], references: [id])
+  pg_payment_orders pg_payment_orders[]
+
+  @@index([merchant_id])
+  @@index([secret_key_prefix, is_active], name: "idx_pg_api_key_prefix")
+}
+
+model pg_payment_orders {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  payment_key     String    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id        String    @db.VarChar(64)
+  merchant_id     String    @db.Uuid
+  api_key_id      String    @db.Uuid
+  transaction_id  String?   @db.Uuid
+  amount          BigInt
+  order_name      String    @db.VarChar(100)
+  status          String    @default("READY") @db.VarChar(30)
+  payment_method  String?   @db.VarChar(30)
+  customer_email  String?   @db.VarChar(255)
+  customer_name   String?   @db.VarChar(100)
+  success_url     String?   @db.VarChar(512)
+  fail_url        String?   @db.VarChar(512)
+  cancel_reason   String?   @db.VarChar(200)
+  cancel_amount   BigInt?
+  approved_at     DateTime? @db.Timestamptz()
+  expires_at      DateTime  @db.Timestamptz()
+  created_at      DateTime  @default(now()) @db.Timestamptz()
+  updated_at      DateTime  @updatedAt @db.Timestamptz()
+
+  merchants    merchants     @relation(fields: [merchant_id], references: [id])
+  api_key      pg_api_keys   @relation(fields: [api_key_id], references: [id])
+  transaction  transactions? @relation(fields: [transaction_id], references: [id])
+  pg_webhooks  pg_webhooks[]
+
+  @@unique([order_id, merchant_id], name: "uq_order_merchant")
+  @@unique([payment_key, merchant_id], name: "uq_payment_key_merchant")
+  @@index([merchant_id], name: "idx_pg_order_merchant")
+  @@index([status], name: "idx_pg_order_status")
+}
+
+model pg_webhooks {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  payment_order_id String    @db.Uuid
+  event_type       String    @db.VarChar(50)
+  payload          Json
+  status           String    @default("PENDING") @db.VarChar(20)
+  retry_count      Int       @default(0)
+  next_retry_at    DateTime? @db.Timestamptz()
+  sent_at          DateTime? @db.Timestamptz()
+  response_status  Int?
+  response_body    String?   @db.Text
+  created_at       DateTime  @default(now()) @db.Timestamptz()
+
+  pg_payment_orders pg_payment_orders @relation(fields: [payment_order_id], references: [id])
+
+  @@index([payment_order_id], name: "idx_pg_webhook_order")
+  @@index([status, next_retry_at], name: "idx_pg_webhook_retry")
+}
+
+model card_tokens {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  token         String    @unique @db.VarChar(255)
+  encrypted_pan Bytes
+  key_id        String    @db.VarChar(100)
+  card_bin      String    @db.VarChar(6)
+  last_four     String    @db.VarChar(4)
+  card_company  String    @db.VarChar(50)
+  card_type     String?   @db.VarChar(20)
+  card_brand    String?   @db.VarChar(20)
+  merchant_id   String    @db.Uuid
+  is_active     Boolean   @default(true)
+  expires_at    DateTime? @db.Timestamptz()
+  created_at    DateTime  @default(now()) @db.Timestamptz()
+  created_by    String?   @db.Uuid
+  updated_at    DateTime  @updatedAt @db.Timestamptz()
+  updated_by    String?   @db.Uuid
+
+  merchants merchants @relation(fields: [merchant_id], references: [id])
+
+  @@unique([merchant_id, card_bin, last_four])
+  @@index([merchant_id])
+  @@index([is_active])
+  @@index([created_at])
+  @@index([card_bin, last_four])
+}

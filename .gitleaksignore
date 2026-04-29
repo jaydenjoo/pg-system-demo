@@ -1,0 +1,41 @@
+# gitleaks false positive ignore list
+# Test fixture / 문서 예시 더미 키 — 진짜 비밀 아님
+
+# CI workflow dummy keys (0123456789abcdef 반복 패턴)
+.github/workflows/ci.yml:generic-api-key:69
+.github/workflows/ci.yml:generic-api-key:70
+
+# Test helper / KMS hex keys
+apps/api/src/modules/auth/__tests__/auth-test.helper.ts:generic-api-key:4
+apps/api/src/modules/security/__tests__/local-kms.spec.ts:generic-api-key:6
+
+# pg-gateway api-key service test fixtures (sk_live_12345678, ck_live_abc123 패턴)
+apps/api/src/modules/pg-gateway/__tests__/api-key.service.spec.ts:generic-api-key:45
+apps/api/src/modules/pg-gateway/__tests__/api-key.service.spec.ts:generic-api-key:47
+apps/api/src/modules/pg-gateway/__tests__/api-key.service.spec.ts:generic-api-key:127
+apps/api/src/modules/pg-gateway/__tests__/api-key.service.spec.ts:generic-api-key:188
+apps/api/src/modules/pg-gateway/__tests__/api-key.service.spec.ts:stripe-access-token:118
+apps/api/src/modules/pg-gateway/__tests__/api-key.service.spec.ts:stripe-access-token:143
+
+# Webhook service test secrets (whsec_a1b2c3... 패턴)
+apps/api/src/modules/pg-gateway/__tests__/webhook-enhanced.service.spec.ts:generic-api-key:12
+apps/api/src/modules/pg-gateway/__tests__/webhook.service.spec.ts:generic-api-key:15
+
+# Documentation example dummy keys
+defensive_programming_universal.md:generic-api-key:186
+
+# Test guide curl commands (curl-auth-user rule false positive)
+docs/full-test-guide.md:curl-auth-user:152
+docs/full-test-guide.md:curl-auth-user:180
+docs/full-test-guide.md:curl-auth-user:201
+docs/full-test-guide.md:curl-auth-user:208
+docs/full-test-guide.md:curl-auth-user:303
+docs/full-test-guide.md:curl-auth-user:316
+
+# Security guide example dummy tokens/keys (tok_abc123xyz789, sk-live-abc123...)
+docs/guides/pg_system_security_guide.md:generic-api-key:287
+docs/guides/pg_system_security_guide.md:generic-api-key:309
+
+# PROGRESS.md test environment dummy keys (private 레포 + Jayden 더미 확인)
+PROGRESS.md:generic-api-key:1044
+PROGRESS.md:stripe-access-token:1045

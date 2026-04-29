@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+.next/
+out/
+
+# Environment files
+.env
+.env.docker
+.env.local
+.env.production
+.env.*.local
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Turbo
+.turbo/
+
+# Prisma
+apps/api/prisma/migrations/
+
+# Playwright
+apps/web/e2e/.auth/
+apps/web/test-results/
+apps/web/playwright-report/
+
+# Security scan reports (SBOM, DAST)
+reports/
+
+# TLS certificates (자체 서명 인증서 - 절대 커밋 금지)
+infra/nginx/ssl/
+
+# Claude Code (내부 AI 설정 - 외부 노출 방지)
+.claude/
+
+# Internal prompts archive (내부 프롬프트 - 외부 노출 방지)
+docs/_archive/
+
+# Coverage reports (테스트 커버리지 자동 생성 - secret 누출 위험)
+coverage/
+**/coverage/
+.nyc_output/

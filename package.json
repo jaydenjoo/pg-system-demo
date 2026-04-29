@@ -1,0 +1,40 @@
+{
+  "name": "pg-system",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.28.2",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "security:lint": "pnpm --filter api lint",
+    "test:e2e": "pnpm --filter api test:e2e",
+    "test:e2e:web": "pnpm --filter web test:e2e",
+    "security:audit": "pnpm audit --audit-level=high",
+    "security:sbom": "bash scripts/generate-sbom.sh",
+    "security:dast": "bash scripts/dast-scan.sh",
+    "security:evidence": "bash scripts/collect-evidence.sh",
+    "security:all": "pnpm security:sbom && pnpm security:audit",
+    "test:load:smoke": "npx tsx tests/load/smoke.ts",
+    "test:load": "npx tsx tests/load/load.ts",
+    "test:load:stress": "npx tsx tests/load/stress.ts",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.4.2",
+    "@commitlint/config-conventional": "^20.4.2",
+    "@types/autocannon": "^7.12.7",
+    "autocannon": "^8.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.1",
+    "tsx": "^4.21.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
