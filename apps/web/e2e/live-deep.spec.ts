@@ -118,18 +118,31 @@ test.describe("Admin happy path", () => {
     expect(consoleErrors).toEqual([]);
   });
 
-  test("수수료 설정 페이지: 대리점 탭 → 조회", async ({ page }) => {
+  test("수수료 설정 페이지: 대리점 탭 → 자동 선택 + 데이터 표시", async ({ page }) => {
     await login(page, "admin");
     await page.goto(`${BASE}/commissions`);
     await page.getByRole("button", { name: "대리점 수수료" }).click();
-    await page.getByPlaceholder("대리점 ID 입력").fill("agt-001");
-    await page.getByRole("button", { name: "조회" }).click();
+    // 첫 번째 대리점이 자동 선택되어 데이터 자동 로드
     await page.waitForResponse(
-      (r) => r.url().includes("/api/v1/commissions/agents/agt-001") && r.status() === 200,
+      (r) => /\/api\/v1\/commissions\/agents\/agt-/.test(r.url()) && r.status() === 200,
       { timeout: 10_000 },
     );
     await page.waitForTimeout(1500);
     await expect(page.getByText("3계층 수수료 비교")).toBeVisible();
+    await expect(page.getByText("변경 이력")).toBeVisible();
+  });
+
+  test("수수료 설정 페이지: 가맹점 탭 → 자동 선택 + 데이터 표시", async ({ page }) => {
+    await login(page, "admin");
+    await page.goto(`${BASE}/commissions`);
+    await page.getByRole("button", { name: "가맹점 수수료" }).click();
+    await page.waitForResponse(
+      (r) => /\/api\/v1\/commissions\/merchants\/mch-/.test(r.url()) && r.status() === 200,
+      { timeout: 10_000 },
+    );
+    await page.waitForTimeout(1500);
+    await expect(page.getByText("3계층 수수료 비교")).toBeVisible();
+    await expect(page.getByText("변경 이력")).toBeVisible();
   });
 
   test("보안 감사 페이지", async ({ page }) => {

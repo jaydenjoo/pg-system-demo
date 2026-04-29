@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   usePgMargins,
   useAgentCommissions,
@@ -9,6 +9,8 @@ import {
   useSetAgentCommission,
   useSetMerchantCommission,
 } from "@/hooks/use-commissions";
+import { useAgents } from "@/hooks/use-agents";
+import { useMerchants } from "@/hooks/use-merchants";
 import { PgMarginTable } from "@/components/commissions/PgMarginTable";
 import { PgMarginForm } from "@/components/commissions/PgMarginForm";
 import { CommissionTierView } from "@/components/commissions/CommissionTierView";
@@ -16,7 +18,6 @@ import { CommissionHistoryTable } from "@/components/commissions/CommissionHisto
 import { SetCommissionForm } from "@/components/commissions/SetCommissionForm";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import type { SetAgentCommissionForm } from "@/types/commission";
 
@@ -27,7 +28,9 @@ export default function CommissionsPage() {
   const [showPgForm, setShowPgForm] = useState(false);
   const [showEntityForm, setShowEntityForm] = useState(false);
   const [entityId, setEntityId] = useState("");
-  const [entityIdInput, setEntityIdInput] = useState("");
+
+  const { agents } = useAgents({ page: 1, limit: 100 });
+  const { merchants } = useMerchants({ page: 1, limit: 100 });
 
   const { margins, isLoading: pgLoading, mutate: mutatePg } = usePgMargins();
   const {
@@ -59,14 +62,19 @@ export default function CommissionsPage() {
     { key: "merchant", label: "가맹점 수수료" },
   ];
 
+  // 탭 전환 시 기본값 자동 선택 (사용자가 ID 외울 필요 없음)
+  useEffect(() => {
+    if (activeTab === "agent" && agents.length > 0 && entityId === "") {
+      setEntityId(agents[0].id);
+    } else if (activeTab === "merchant" && merchants.length > 0 && entityId === "") {
+      setEntityId(merchants[0].id);
+    }
+  }, [activeTab, agents, merchants, entityId]);
+
   const handlePgSuccess = async () => {
     success("PG 마진이 저장되었습니다.");
     await mutatePg();
     setShowPgForm(false);
-  };
-
-  const handleEntitySearch = () => {
-    setEntityId(entityIdInput.trim());
   };
 
   const handleSetCommission = async (form: SetAgentCommissionForm) => {
@@ -112,7 +120,6 @@ export default function CommissionsPage() {
             onClick={() => {
               setActiveTab(tab.key);
               setEntityId("");
-              setEntityIdInput("");
             }}
             className={`px-5 py-2.5 text-sm font-medium transition-colors ${
               activeTab === tab.key
@@ -149,19 +156,27 @@ export default function CommissionsPage() {
       {/* 대리점 / 가맹점 수수료 탭 */}
       {(activeTab === "agent" || activeTab === "merchant") && (
         <div className="space-y-6">
-          <div className="flex gap-2">
-            <Input
-              placeholder={
-                activeTab === "agent" ? "대리점 ID 입력" : "가맹점 ID 입력"
-              }
-              value={entityIdInput}
-              onChange={(e) => setEntityIdInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleEntitySearch()}
-              className="max-w-xs"
-            />
-            <Button variant="outline" onClick={handleEntitySearch}>
-              조회
-            </Button>
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700">
+              {activeTab === "agent" ? "대리점 선택" : "가맹점 선택"}
+            </label>
+            <select
+              value={entityId}
+              onChange={(e) => setEntityId(e.target.value)}
+              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {activeTab === "agent"
+                ? agents.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      [{a.agent_code}] {a.agent_name}
+                    </option>
+                  ))
+                : merchants.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      [{m.merchant_code}] {m.merchant_name}
+                    </option>
+                  ))}
+            </select>
           </div>
 
           {entityId && (
