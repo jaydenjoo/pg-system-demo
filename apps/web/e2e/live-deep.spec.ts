@@ -28,7 +28,6 @@ async function login(page: Page, role: Role): Promise<void> {
   ]);
 }
 
-test.describe.configure({ mode: "serial" });
 test.use({ storageState: { cookies: [], origins: [] } });
 
 // ========================================================================
@@ -64,9 +63,9 @@ test.describe("Admin happy path", () => {
   test("가맹점 상세 페이지 진입", async ({ page }) => {
     await login(page, "admin");
     await page.goto(`${BASE}/merchants/mch-001`);
-    await expect(page.getByRole("heading", { name: "카페 모카" })).toBeVisible();
-    await expect(page.getByText("M001")).toBeVisible();
-    await expect(page.getByText("신한은행")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "카페 모카" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("M001").first()).toBeVisible();
+    await expect(page.getByText("신한은행").first()).toBeVisible();
   });
 
   test("대리점 관리 → 3개 대리점", async ({ page }) => {
@@ -81,9 +80,16 @@ test.describe("Admin happy path", () => {
   test("거래 내역 페이지", async ({ page }) => {
     await login(page, "admin");
     await page.goto(`${BASE}/transactions`);
-    await expect(page.getByRole("heading", { name: "거래 내역" })).toBeVisible();
-    const rowCount = await page.locator("tbody tr").count();
-    expect(rowCount).toBeGreaterThan(0);
+    await expect(page.getByRole("heading", { name: "거래 내역", exact: true })).toBeVisible();
+    // 데이터 로드 완료 대기
+    await page.waitForResponse(
+      (r) => r.url().includes("/api/v1/transactions") && r.status() === 200,
+      { timeout: 15_000 },
+    );
+    await page.waitForTimeout(1500);
+    // 테이블 헤더 또는 거래번호 형식 확인
+    const tranNoCell = page.locator('text=/T\\d{8,}/');
+    await expect(tranNoCell.first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("정산 관리 페이지", async ({ page }) => {
