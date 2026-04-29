@@ -11,6 +11,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       { status: 401 },
     );
   }
-  const { page, limit } = readPagination(request.nextUrl.searchParams);
-  return NextResponse.json(paginate(MOCK_DEPOSITS, page, limit));
+  const sp = request.nextUrl.searchParams;
+  const { page, limit } = readPagination(sp);
+  let items = MOCK_DEPOSITS;
+  const status = sp.get('reconcileStatus');
+  if (status) items = items.filter((d) => d.reconcile_status === status);
+  return NextResponse.json(paginate(items, page, limit));
 }

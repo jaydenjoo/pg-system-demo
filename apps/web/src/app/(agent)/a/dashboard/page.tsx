@@ -31,7 +31,7 @@ function getDateRange(days: number): { startDate: string; endDate: string } {
 }
 
 export default function AgentDashboardPage(): React.JSX.Element {
-  const [selectedDays, setSelectedDays] = React.useState<number>(30);
+  const [selectedDays, setSelectedDays] = React.useState<number>(0);
 
   const query: DashboardQuery = React.useMemo(
     () => getDateRange(selectedDays),

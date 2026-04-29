@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getCurrentUser } from '../_lib/auth-context';
-import { MOCK_AGENTS, paginate, readPagination } from '../_lib/mock-data';
+import { MOCK_AGENTS, paginate, readPagination, applySearch, applyStatusFilter } from '../_lib/mock-data';
 
 export const runtime = 'nodejs';
 
@@ -11,6 +11,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       { status: 401 },
     );
   }
-  const { page, limit } = readPagination(request.nextUrl.searchParams);
-  return NextResponse.json(paginate(MOCK_AGENTS, page, limit));
+  const sp = request.nextUrl.searchParams;
+  const { page, limit } = readPagination(sp);
+  let items = MOCK_AGENTS;
+  items = applySearch(items, sp.get('search'));
+  items = applyStatusFilter(items, sp.get('status'));
+  return NextResponse.json(paginate(items, page, limit));
 }

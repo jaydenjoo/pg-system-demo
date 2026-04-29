@@ -15,7 +15,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const groupParam = request.nextUrl.searchParams.get('codeGroup');
   const filtered =
     groupParam !== null && groupParam !== ''
-      ? MOCK_SYSTEM_CODES.filter((c) => c.codeGroup === groupParam)
+      ? MOCK_SYSTEM_CODES.filter((c) => c.code_group === groupParam)
       : MOCK_SYSTEM_CODES;
   return NextResponse.json(paginate(filtered, page, limit));
 }

@@ -11,6 +11,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       { status: 401 },
     );
   }
-  const { page, limit } = readPagination(request.nextUrl.searchParams);
-  return NextResponse.json(paginate(MOCK_SETTLEMENTS, page, limit));
+  const sp = request.nextUrl.searchParams;
+  const { page, limit } = readPagination(sp);
+  let items = MOCK_SETTLEMENTS;
+  const status = sp.get('status');
+  if (status) items = items.filter((s) => s.status === status);
+  const merchantId = sp.get('merchantId');
+  if (merchantId) items = items.filter((s) => s.merchant_id === merchantId);
+  return NextResponse.json(paginate(items, page, limit));
 }

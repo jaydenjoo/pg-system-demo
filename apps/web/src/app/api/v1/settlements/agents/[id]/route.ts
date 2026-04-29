@@ -1,12 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getCurrentUser } from '../../../_lib/auth-context';
-import { MOCK_SETTLEMENTS, paginate, readPagination } from '../../../_lib/mock-data';
+import { MOCK_AGENT_SETTLEMENTS, paginate, readPagination } from '../../../_lib/mock-data';
 
 export const runtime = 'nodejs';
 
 export async function GET(
   request: NextRequest,
-  { params: _params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   if (getCurrentUser(request) === null) {
     return NextResponse.json(
@@ -14,6 +14,9 @@ export async function GET(
       { status: 401 },
     );
   }
-  const { page, limit } = readPagination(request.nextUrl.searchParams);
-  return NextResponse.json(paginate(MOCK_SETTLEMENTS, page, limit));
+  const { id } = await params;
+  const sp = request.nextUrl.searchParams;
+  const { page, limit } = readPagination(sp);
+  const items = MOCK_AGENT_SETTLEMENTS.filter((s) => s.agent_id === id);
+  return NextResponse.json(paginate(items, page, limit));
 }
