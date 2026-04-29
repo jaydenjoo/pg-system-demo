@@ -4,5 +4,5 @@
   "outputDirectory": "apps/web/.next",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": "nextjs",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- apps/web packages/shared pnpm-lock.yaml"
+  "ignoreCommand": "bash -c 'git rev-parse --verify HEAD^ >/dev/null 2>&1 && git diff --quiet HEAD^ HEAD -- apps/web packages/shared pnpm-lock.yaml'"
 }
