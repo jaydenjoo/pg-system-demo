@@ -1,36 +1,44 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { getCurrentUser } from '../../_lib/auth-context';
-import { MOCK_PG_MARGINS, paginate, readPagination } from '../../_lib/mock-data';
+import { getCurrentUser } from '../../../_lib/auth-context';
+import { MOCK_MERCHANT_COMMISSIONS_BY_MERCHANT } from '../../../_lib/mock-data';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> {
   if (getCurrentUser(request) === null) {
     return NextResponse.json(
       { error: { code: 'UNAUTHORIZED', message: '인증이 필요합니다.' } },
       { status: 401 },
     );
   }
-  const { page, limit } = readPagination(request.nextUrl.searchParams);
-  return NextResponse.json(paginate(MOCK_PG_MARGINS, page, limit));
+  const { id } = await params;
+  return NextResponse.json({ data: MOCK_MERCHANT_COMMISSIONS_BY_MERCHANT[id] ?? [] });
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse> {
   if (getCurrentUser(request) === null) {
     return NextResponse.json(
       { error: { code: 'UNAUTHORIZED', message: '인증이 필요합니다.' } },
       { status: 401 },
     );
   }
-  const body = (await request.json()) as { paymentMethod?: string; cardCompany?: string; marginRate?: string; minFee?: number };
+  const { id } = await params;
+  const body = (await request.json()) as { paymentMethod?: string; cardCompany?: string; commissionRate?: string };
+
   return NextResponse.json({
     data: {
-      id: `pgm-new-${Date.now()}`,
+      id: `mcomm-new-${Date.now()}`,
+      merchant_id: id,
       payment_method: body.paymentMethod ?? 'CARD',
       card_company: body.cardCompany ?? null,
-      margin_rate: body.marginRate ?? '1.80',
-      min_fee: body.minFee ?? 100,
+      commission_rate: body.commissionRate ?? '2.80',
       effective_from: new Date().toISOString().split('T')[0],
       effective_to: null,
       created_at: new Date().toISOString(),

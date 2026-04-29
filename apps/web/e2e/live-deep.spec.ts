@@ -104,10 +104,32 @@ test.describe("Admin happy path", () => {
     await expect(page.getByRole("heading", { name: /입금/ })).toBeVisible();
   });
 
-  test("수수료 설정 페이지", async ({ page }) => {
+  test("수수료 설정 페이지 (PG 마진 기본 탭 + 표 렌더)", async ({ page }) => {
     await login(page, "admin");
+    const consoleErrors: string[] = [];
+    page.on("pageerror", (e) => consoleErrors.push(e.message));
     await page.goto(`${BASE}/commissions`);
     await expect(page.getByRole("heading", { name: /수수료/ })).toBeVisible();
+    await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => null);
+    await page.waitForTimeout(1500);
+    await expect(page.getByText("CARD").first()).toBeVisible();
+    await expect(page.getByText("신한카드").first()).toBeVisible();
+    await expect(page.getByText("BANK_TRANSFER").first()).toBeVisible();
+    expect(consoleErrors).toEqual([]);
+  });
+
+  test("수수료 설정 페이지: 대리점 탭 → 조회", async ({ page }) => {
+    await login(page, "admin");
+    await page.goto(`${BASE}/commissions`);
+    await page.getByRole("button", { name: "대리점 수수료" }).click();
+    await page.getByPlaceholder("대리점 ID 입력").fill("agt-001");
+    await page.getByRole("button", { name: "조회" }).click();
+    await page.waitForResponse(
+      (r) => r.url().includes("/api/v1/commissions/agents/agt-001") && r.status() === 200,
+      { timeout: 10_000 },
+    );
+    await page.waitForTimeout(1500);
+    await expect(page.getByText("3계층 수수료 비교")).toBeVisible();
   });
 
   test("보안 감사 페이지", async ({ page }) => {
@@ -304,7 +326,7 @@ test.describe("입력 변조 방어", () => {
     await expect(page.getByText(/찾을 수 없습니다|Not Found|가맹점을/)).toBeVisible({ timeout: 10_000 });
   });
 
-  test("존재하지 않는 거래 → 404", async ({ request, context }) => {
+  test("존재하지 않는 거래 → 404", async ({ context }) => {
     await login(await context.newPage(), "admin");
     const res = await context.request.get(`${BASE}/api/v1/transactions/non-existent`);
     expect(res.status()).toBe(404);

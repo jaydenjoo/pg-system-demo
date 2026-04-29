@@ -421,22 +421,216 @@ export const MOCK_TOP_AGENTS = MOCK_AGENTS.map((a, i) => ({
 }));
 
 // ============================================================
-// PG Margins
+// PG Margins (결제수단 × 카드사 조합)
 // ============================================================
 
-export const MOCK_PG_MARGINS = MOCK_MERCHANTS.map((m, i) => ({
-  id: `pgm-${String(i + 1).padStart(3, '0')}`,
-  merchant_id: m.id,
-  merchant_name: m.merchant_name,
-  merchant_code: m.merchant_code,
-  card_rate: ['2.8', '2.7', '2.9', '3.0', '2.85'][i],
-  bank_rate: ['0.8', '0.8', '0.9', '1.0', '0.85'][i],
-  vat_rate: '0.1',
-  effective_date: '2026-01-01',
-  created_at: '2026-01-01T00:00:00.000Z',
-  updated_at: '2026-01-01T00:00:00.000Z',
-  merchants: merchantJoin(i),
-}));
+const CARD_COMPANIES = ['신한카드', '국민카드', '삼성카드', '현대카드', '롯데카드'];
+
+export const MOCK_PG_MARGINS = [
+  // CARD: 카드사별 마진율
+  ...CARD_COMPANIES.map((cc, i) => ({
+    id: `pgm-card-${String(i + 1).padStart(3, '0')}`,
+    payment_method: 'CARD',
+    card_company: cc,
+    margin_rate: ['1.80', '1.85', '1.75', '1.90', '1.95'][i],
+    min_fee: 100,
+    effective_from: '2026-01-01',
+    effective_to: null,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    created_by: 'mock-admin-001',
+  })),
+  {
+    id: 'pgm-bank-001',
+    payment_method: 'BANK_TRANSFER',
+    card_company: null,
+    margin_rate: '0.50',
+    min_fee: 50,
+    effective_from: '2026-01-01',
+    effective_to: null,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    created_by: 'mock-admin-001',
+  },
+  {
+    id: 'pgm-va-001',
+    payment_method: 'VIRTUAL_ACCOUNT',
+    card_company: null,
+    margin_rate: '0.30',
+    min_fee: 30,
+    effective_from: '2026-01-01',
+    effective_to: null,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    created_by: 'mock-admin-001',
+  },
+  {
+    id: 'pgm-cash-001',
+    payment_method: 'CASH',
+    card_company: null,
+    margin_rate: '0.20',
+    min_fee: 0,
+    effective_from: '2026-01-01',
+    effective_to: null,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    created_by: 'mock-admin-001',
+  },
+];
+
+// ============================================================
+// Agent Commissions (대리점 수수료 — agentId별)
+// ============================================================
+
+export const MOCK_AGENT_COMMISSIONS_BY_AGENT: Record<string, Array<{
+  id: string;
+  agent_id: string;
+  payment_method: string;
+  card_company: string | null;
+  commission_rate: string;
+  effective_from: string;
+  effective_to: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  agents?: { agent_name: string; agent_code: string } | null;
+}>> = {};
+
+MOCK_AGENTS.forEach((agent, ai) => {
+  const items: typeof MOCK_AGENT_COMMISSIONS_BY_AGENT[string] = [];
+  CARD_COMPANIES.forEach((cc, ci) => {
+    items.push({
+      id: `acomm-${agent.id}-card-${ci + 1}`,
+      agent_id: agent.id,
+      payment_method: 'CARD',
+      card_company: cc,
+      commission_rate: ['2.20', '2.25', '2.15', '2.30', '2.35'][ci],
+      effective_from: '2026-01-01',
+      effective_to: null,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      created_by: 'mock-admin-001',
+      agents: { agent_name: agent.agent_name, agent_code: agent.agent_code },
+    });
+  });
+  items.push({
+    id: `acomm-${agent.id}-bank-1`,
+    agent_id: agent.id,
+    payment_method: 'BANK_TRANSFER',
+    card_company: null,
+    commission_rate: '0.80',
+    effective_from: '2026-01-01',
+    effective_to: null,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    created_by: 'mock-admin-001',
+    agents: { agent_name: agent.agent_name, agent_code: agent.agent_code },
+  });
+  void ai;
+  MOCK_AGENT_COMMISSIONS_BY_AGENT[agent.id] = items;
+});
+
+// ============================================================
+// Merchant Commissions (가맹점 수수료 — merchantId별)
+// ============================================================
+
+export const MOCK_MERCHANT_COMMISSIONS_BY_MERCHANT: Record<string, Array<{
+  id: string;
+  merchant_id: string;
+  payment_method: string;
+  card_company: string | null;
+  commission_rate: string;
+  effective_from: string;
+  effective_to: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  merchants?: { merchant_name: string; merchant_code: string } | null;
+}>> = {};
+
+MOCK_MERCHANTS.forEach((merchant, mi) => {
+  const items: typeof MOCK_MERCHANT_COMMISSIONS_BY_MERCHANT[string] = [];
+  CARD_COMPANIES.forEach((cc, ci) => {
+    items.push({
+      id: `mcomm-${merchant.id}-card-${ci + 1}`,
+      merchant_id: merchant.id,
+      payment_method: 'CARD',
+      card_company: cc,
+      commission_rate: ['2.80', '2.85', '2.75', '2.90', '2.95'][ci],
+      effective_from: '2026-01-01',
+      effective_to: null,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      created_by: 'mock-admin-001',
+      merchants: { merchant_name: merchant.merchant_name, merchant_code: merchant.merchant_code },
+    });
+  });
+  items.push({
+    id: `mcomm-${merchant.id}-bank-1`,
+    merchant_id: merchant.id,
+    payment_method: 'BANK_TRANSFER',
+    card_company: null,
+    commission_rate: '1.00',
+    effective_from: '2026-01-01',
+    effective_to: null,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    created_by: 'mock-admin-001',
+    merchants: { merchant_name: merchant.merchant_name, merchant_code: merchant.merchant_code },
+  });
+  void mi;
+  MOCK_MERCHANT_COMMISSIONS_BY_MERCHANT[merchant.id] = items;
+});
+
+// ============================================================
+// Commission History (변경 이력)
+// ============================================================
+
+export function buildCommissionHistory(
+  entityType: 'agent' | 'merchant',
+  entityId: string,
+): { entityType: 'agent' | 'merchant'; entityId: string; data: Array<{
+  id: string; payment_method: string; card_company: string | null;
+  commission_rate: string; effective_from: string; effective_to: string | null;
+  created_at: string; created_by: string;
+}> } {
+  const source =
+    entityType === 'agent'
+      ? MOCK_AGENT_COMMISSIONS_BY_AGENT[entityId] ?? []
+      : MOCK_MERCHANT_COMMISSIONS_BY_MERCHANT[entityId] ?? [];
+
+  // 현재 + 과거 1번 변경 이력 시뮬레이션
+  const history = source.flatMap((item, idx) => {
+    const records = [
+      {
+        id: `hist-${item.id}-current`,
+        payment_method: item.payment_method,
+        card_company: item.card_company,
+        commission_rate: item.commission_rate,
+        effective_from: item.effective_from,
+        effective_to: item.effective_to,
+        created_at: item.created_at,
+        created_by: item.created_by,
+      },
+    ];
+    if (idx % 2 === 0) {
+      const prevRate = (Number(item.commission_rate) + 0.1).toFixed(2);
+      records.push({
+        id: `hist-${item.id}-prev`,
+        payment_method: item.payment_method,
+        card_company: item.card_company,
+        commission_rate: prevRate,
+        effective_from: '2025-10-01',
+        effective_to: '2025-12-31',
+        created_at: '2025-10-01T00:00:00.000Z',
+        created_by: 'mock-admin-001',
+      });
+    }
+    return records;
+  });
+
+  return { entityType, entityId, data: history };
+}
 
 // ============================================================
 // System Codes
