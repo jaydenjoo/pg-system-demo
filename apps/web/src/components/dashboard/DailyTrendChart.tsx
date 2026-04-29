@@ -83,7 +83,7 @@ export function DailyTrendChart({
       <CardContent>
         <div className="relative">
           <div
-            className="flex items-end gap-px h-40"
+            className="flex gap-px h-40"
             aria-label="일별 거래 금액 바 차트"
           >
             {displayData.map((item) => {
