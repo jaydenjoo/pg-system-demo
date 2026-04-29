@@ -1,11 +1,13 @@
 // ============================================================
 // PG Gateway — 결제 API 클라이언트 (Basic Auth)
-// ⚠️ 서버 전용: secretKey 보호를 위해 브라우저에서 절대 사용 금지.
+// ⚠️ 데모 사이트(Vercel) 빌드용 — 'server-only' 일시 비활성화.
+// payment-test/page.tsx가 클라이언트 컴포넌트에서 DEMO_SECRET_KEY로 호출하기 때문.
+// 운영 배포 시: API Route 또는 Server Action으로 리팩토링 후 'server-only' 복원 필요.
 // 관리자 대시보드(api-client.ts)와 다른 인증 방식 사용:
 //   - api-client.ts → JWT 쿠키 (credentials: 'include')
-//   - payment-client.ts → PG Basic Auth (Base64 secretKey:) — 서버 전용
+//   - payment-client.ts → PG Basic Auth (Base64 secretKey:) — 데모/내부망 전용
 // ============================================================
-import 'server-only';
+// import 'server-only'; // TEMP DISABLED for demo build (Vercel)
 
 import type {
   CreatePaymentOrderInput,
