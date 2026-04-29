@@ -1,10 +1,41 @@
 # PG System 역설계 & 재구축 프로젝트 - PROGRESS
 > **이 파일을 새 세션 시작 시 참조하면 100% 이어서 작업 가능**
-> 최종 업데이트: 2026.04.29 (#4 — Vercel 배포 사이클 완료: Next.js CVE-2025-66478 패치 적용)
+> 최종 업데이트: 2026.04.29 (#5 — Mock API Routes로 라이브 데모 로그인 작동)
 
 ---
 
-## 🆕 2026-04-29 세션 기록 (#4 — Vercel 배포 사이클 + Next.js CVE 패치) ✅ 완료
+## 🆕 2026-04-29 세션 기록 (#5 — Mock API Routes 구현 → 라이브 데모 로그인 작동) ✅ 완료
+
+### 🎉 결과
+- **라이브 사이트 로그인 작동**: https://pg-system-demo.vercel.app/login
+- **3개 사용자 유형 검증 완료** (Playwright 자동 검증):
+  - ✅ admin / Admin1234!@ → /dashboard
+  - ✅ agent_test / Agent1234!@ → /a/dashboard
+  - ✅ merchant_test / Merchant1234!@ → /m/dashboard
+- **백엔드 없이 데모 가능**: Vercel API Routes 43개로 mock 구현 (무료, 24/7)
+
+### 추가된 API 엔드포인트 (43개)
+- **Auth**: login, logout, me, refresh, login/mfa, mfa/enable, mfa/setup, password/change
+- **Dashboard**: summary, transaction-stats, settlement-stats, daily-trend, top-merchants, top-agents
+- **리스트**: merchants, agents, transactions, deposits, settlements, users, roles, system/codes, system/menus, system/notifications, commissions/pg-margins
+- **상세/액션**: merchants/[id], merchants/[id]/status, transactions/[id]/cancel, deposits/[id]/reconcile, settlements/[id]/complete 등
+- **보안 모니터링**: audit-logs, login-history, risk-alerts
+- **기타**: webhooks/test
+
+### 핵심 파일
+- `apps/web/src/app/api/v1/_lib/mock-jwt.ts` — Edge Runtime 호환 base64URL JWT (UTF-8 안전)
+- `apps/web/src/app/api/v1/_lib/mock-users.ts` — 시드 계정 3개
+- `apps/web/src/app/api/v1/_lib/mock-data.ts` — 대시보드 통계 + 리스트 mock
+- `apps/web/src/app/api/v1/_lib/cookies.ts` — HttpOnly 쿠키 헬퍼
+- `apps/web/src/app/api/v1/_lib/auth-context.ts` — 요청 → 사용자 추출
+
+### 커밋
+- `07f2bf6` feat(web): demo용 Mock API Routes 구현 (43 endpoints)
+- `59b3e42` fix(web): UTF-8 안전 base64URL JWT 인코딩 (Korean 사용자명 500 에러 수정)
+
+---
+
+## 2026-04-29 세션 기록 (#4 — Vercel 배포 사이클 + Next.js CVE 패치) ✅ 완료
 
 ### 🎉 결과
 - **라이브 사이트**: https://pg-system-demo.vercel.app/

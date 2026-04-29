@@ -1,7 +1,38 @@
 # learnings.md — PG System
 > **오류 패턴과 결정 기록 = 바이브코딩의 복리 이자**
 > AI가 매 세션 자동 참조 → 같은 실수 반복 방지
-> 최종 업데이트: 2026-04-29 (#4 — Vercel 배포 사이클 큰 교훈)
+> 최종 업데이트: 2026-04-29 (#5 — UTF-8 btoa 함정 + Mock API 패턴)
+
+---
+
+## 🟡 [2026-04-29] [Edge Runtime] btoa()는 ASCII만 지원 — 한글 입력 시 500
+
+- **상황**: Next.js API Route(Vercel)에서 mock JWT 생성 중 `btoa(JSON.stringify(payload))` 호출. payload에 `name: '시스템 관리자'` 같은 한글 포함 시 500 InvalidCharacterError. wrong-password 경로는 정상 작동 → 라우트는 살아있음. 디버깅에 30분 소요.
+- **원인**: `btoa()`는 Latin-1 (0-255) 바이트만 받음. UTF-8 멀티바이트 문자(한글, 이모지)는 unencodable.
+- **해결**: `TextEncoder().encode(str)` → 바이트 배열 → `String.fromCharCode(...bytes)` → `btoa(binary)`. 디코딩은 역순 (atob → Uint8Array → TextDecoder).
+- **규칙**:
+  1. Edge Runtime / Web API 환경에서 base64 인코딩은 반드시 UTF-8 안전 wrapper 작성
+  2. Buffer.from(str).toString('base64')는 Node 전용. Edge에서는 안 됨
+  3. JWT/토큰처럼 사용자 이름 들어갈 수 있는 곳은 항상 UTF-8 인코딩 검증
+  4. 디버깅 신호: "특정 입력에서만 500, 다른 입력은 OK" → 데이터 의존 인코딩 의심
+
+---
+
+## 🟢 [2026-04-29] [Demo/Architecture] 데모 사이트는 Mock API Routes로 충분
+
+- **상황**: 백엔드(NestJS) 없이 Vercel에 배포된 Next.js 프론트만으로 외부 감사인/투자자에게 시연 필요. 별도 백엔드 호스팅 비용 + 24/7 가용성 부담.
+- **선택지 비교**:
+  - A. NestJS 별도 배포 (Render/Railway 무료티어) → 콜드스타트 30초 + 월간 슬립
+  - B. Supabase 연결 → DB 셋업 + RLS + 실데이터 위험
+  - C. Next.js API Routes mock → 무료, 24/7, 데이터 위험 0 ✅
+- **선택**: C. 43개 라우트 mock으로 완전 동작
+- **규칙**:
+  1. 데모/프로토타입은 mock API Routes로 시작. 실제 DB 연결은 베타/프로덕션 단계에서
+  2. mock JWT는 서명 검증 없이 base64URL 디코딩만 (Edge Runtime 호환). middleware.ts와 동일 방식
+  3. 시드 계정 = docs/DEMO_SCENARIO.md 1소스. mock-users.ts와 100% 동기화
+  4. 데모 디렉토리는 `_lib/`처럼 underscore prefix → Next.js 라우트 인식 안 됨
+  5. 한 화면에 필요한 mock 데이터는 별도 파일로 분리 (mock-data.ts) → 라우트는 thin wrapper
+  6. API_BASE = `/api/v1` (NEXT_PUBLIC_API_URL 미설정 시 fallback) → 같은 도메인 → CORS 무시 + 쿠키 자동 전달
 
 ---
 
