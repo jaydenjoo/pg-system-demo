@@ -76,3 +76,9 @@ pnpm --filter web lint
 - 개발: `http://localhost:4000` (API 서버)
 - 프로덕션: Nginx 리버스 프록시를 통해 동일 도메인으로 라우팅
 - 환경변수: `NEXT_PUBLIC_API_URL`로 API 주소 설정
+
+## 배포 (Vercel)
+
+- Vercel 자동 배포 — `main` 브랜치 push 시 트리거
+- 빌드 설정: 루트 `vercel.json` (turbo filter `@pg-system/web` only + `apps/api` 제외)
+- `ignoreCommand`로 `apps/web` / `packages/shared` / `pnpm-lock.yaml` 변경 시에만 빌드 진행
