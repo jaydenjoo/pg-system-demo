@@ -81,4 +81,5 @@ pnpm --filter web lint
 
 - Vercel 자동 배포 — `main` 브랜치 push 시 트리거
 - 빌드 설정: 루트 `vercel.json` (turbo filter `@pg-system/web` only + `apps/api` 제외)
-- `ignoreCommand`로 `apps/web` / `packages/shared` / `pnpm-lock.yaml` 변경 시에만 빌드 진행
+- 매 push마다 빌드 진행 (`ignoreCommand` 제거 — Vercel shallow clone에서 신뢰 불가)
+- 빌드 시간: ~20초 (Turbo 캐시 활용 시 더 빠름)
