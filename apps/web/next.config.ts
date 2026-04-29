@@ -4,9 +4,11 @@ const nextConfig: NextConfig = {
   // Docker standalone 빌드용
   output: "standalone",
 
-  // 개발 모드: API 프록시 (브라우저 → Next.js → API 서버)
+  // API 프록시 (개발 모드: NestJS 백엔드로 / Vercel 배포: app/api Routes 직접 처리)
+  // INTERNAL_API_URL이 설정된 경우에만 외부 백엔드로 프록시.
   async rewrites() {
-    const apiUrl = process.env.INTERNAL_API_URL ?? "http://localhost:4000";
+    const apiUrl = process.env.INTERNAL_API_URL;
+    if (!apiUrl) return [];
     return [
       {
         source: "/api/:path*",
