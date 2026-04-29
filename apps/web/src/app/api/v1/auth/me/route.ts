@@ -1,10 +1,10 @@
 /**
  * GET /api/v1/auth/me
- * 현재 로그인된 사용자 정보 반환.
+ * 현재 로그인된 사용자 정보 반환 (snake_case + permissions).
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { getCurrentUser } from '../../_lib/auth-context';
-import { findUserById } from '../../_lib/mock-users';
+import { findUserById, serializeUser } from '../../_lib/mock-users';
 
 export const runtime = 'nodejs';
 
@@ -25,14 +25,5 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  return NextResponse.json({
-    data: {
-      userId: user.userId,
-      loginId: user.loginId,
-      userType: user.userType,
-      name: user.name,
-      email: user.email,
-      mfaEnabled: user.mfaEnabled,
-    },
-  });
+  return NextResponse.json({ data: serializeUser(user) });
 }

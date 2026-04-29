@@ -1,10 +1,10 @@
 /**
  * GET /api/v1/users/me
- * /auth/me와 동일한 응답 (호환용).
+ * useUser()가 호출하는 엔드포인트. snake_case + permissions 포함.
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { getCurrentUser } from '../../_lib/auth-context';
-import { findUserById } from '../../_lib/mock-users';
+import { findUserById, serializeUser } from '../../_lib/mock-users';
 
 export const runtime = 'nodejs';
 
@@ -25,14 +25,5 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  return NextResponse.json({
-    data: {
-      userId: user.userId,
-      loginId: user.loginId,
-      userType: user.userType,
-      name: user.name,
-      email: user.email,
-      mfaEnabled: user.mfaEnabled,
-    },
-  });
+  return NextResponse.json({ data: serializeUser(user) });
 }
